@@ -3,8 +3,8 @@ package example
 import (
 	"net/http"
 
-	"github.com/wangweihong/gotoolbox/src/errors"
-	"github.com/wangweihong/gotoolbox/src/sets"
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+	"github.com/wangweihong/gotoolbox/pkg/sets"
 )
 
 type ErrCode struct {
