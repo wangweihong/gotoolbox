@@ -68,46 +68,6 @@ func (builder *HttpRequestBuilder) AddQueryParam(key string, value interface{}) 
 	return builder
 }
 
-func (builder *HttpRequestBuilder) AddQueryParamByObjectMarshal(input interface{}) *HttpRequestBuilder {
-	if input == nil {
-		return builder
-	}
-
-	v := reflect.ValueOf(input)
-	if v.Kind() == reflect.Ptr {
-		v = v.Elem()
-	}
-
-	t := v.Type()
-	if t.Kind() != reflect.Struct {
-		return builder
-	}
-	for i := 0; i < v.NumField(); i++ {
-		fieldValue := v.Field(i)
-		fieldType := t.Field(i)
-
-		if !fieldType.IsExported() {
-			continue
-		}
-
-		// 忽略空指针
-		if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
-			continue
-		}
-		key := fieldType.Name
-		jsonTag := fieldType.Tag.Get("json")
-		if jsonTag != "" {
-			if fieldValue.IsZero() && strings.Contains(jsonTag, ",omitempty") {
-				continue
-			}
-			key = strings.TrimPrefix(jsonTag, ",omitempty")
-		}
-
-		builder.httpRequest.queryParams[key] = fieldValue.Interface()
-	}
-	return builder
-}
-
 func (builder *HttpRequestBuilder) AddQueryParamByObject(input interface{}) *HttpRequestBuilder {
 	if input == nil {
 		return builder
@@ -127,6 +87,15 @@ func (builder *HttpRequestBuilder) AddQueryParamByObject(input interface{}) *Htt
 		fieldType := t.Field(i)
 
 		if !fieldType.IsExported() {
+			continue
+		}
+
+		// 如果字段是匿名结构体
+		if fieldType.Type.Kind() == reflect.Struct && fieldType.Anonymous {
+			fieldBuilder := NewHttpRequestBuilder().AddQueryParamByObject(fieldValue.Interface())
+			for k, v := range fieldBuilder.httpRequest.queryParams {
+				builder.httpRequest.queryParams[k] = v
+			}
 			continue
 		}
 

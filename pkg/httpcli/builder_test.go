@@ -41,3 +41,49 @@ func TestHttpRequestBuilder_AddQueryParamByObject(t *testing.T) {
 		So(maputil.StringInterfaceMap(params).Equal(expect), ShouldBeTrue)
 	})
 }
+
+func TestHttpRequestBuilder_AddQueryParamByObjectEmbedded(t *testing.T) {
+	Convey("AddQueryParamByObject", t, func() {
+		type PagingParam struct {
+			PageNum  int `form:"page_num" json:"page_num"`
+			PageSize int `form:"page_size" json:"page_size"`
+		}
+
+		type objType struct {
+			PagingParam
+			String string
+		}
+
+		Convey("匿名结构字段不设置", func() {
+			ot := objType{
+				String: "name",
+			}
+			//expect := make(map[string]interface{})
+			expect := make(map[string]interface{})
+			expect = map[string]interface{}{
+				"String":    "name",
+				"page_num":  0,
+				"page_size": 0,
+			}
+			So(maputil.StringInterfaceMap(httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()).Equal(expect), ShouldBeTrue)
+		})
+
+		Convey("匿名结构字段设置", func() {
+			ot := objType{
+				String: "name",
+				PagingParam: PagingParam{
+					PageNum:  1,
+					PageSize: 3,
+				},
+			}
+			//expect := make(map[string]interface{})
+			expect := make(map[string]interface{})
+			expect = map[string]interface{}{
+				"String":    "name",
+				"page_num":  1,
+				"page_size": 3,
+			}
+			So(maputil.StringInterfaceMap(httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()).Equal(expect), ShouldBeTrue)
+		})
+	})
+}
