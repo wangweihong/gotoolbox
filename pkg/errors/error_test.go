@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/wangweihong/gotoolbox/src/errors"
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	. "github.com/smartystreets/goconvey/convey"
 )

@@ -9,7 +9,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/wangweihong/gotoolbox/src/log"
+	"github.com/wangweihong/gotoolbox/pkg/log"
 )
 
 type FileProcessor struct {
