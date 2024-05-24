@@ -11,22 +11,37 @@ const (
 
 type Fields []reflect.StructField
 
+// ParseStructFields 从结构体或者结构体指针(指针非空值)中获取其字段信息
 func ParseStructFields(s interface{}) Fields {
 	if s == nil {
 		return nil
 	}
 
-	if reflect.TypeOf(s).Kind() != reflect.Struct {
+	typ := reflect.TypeOf(s)
+	vyp := reflect.ValueOf(s)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		vyp = vyp.Elem()
+		if !vyp.IsValid() {
+			return nil
+		}
+	}
+
+	if typ.Kind() != reflect.Struct {
 		return nil
 	}
 
-	typ := reflect.TypeOf(s)
-	fts := make([]reflect.StructField, 0, typ.NumField())
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
-		fts = append(fts, field)
+	if typ.NumField() != 0 {
+		fts := make([]reflect.StructField, 0, typ.NumField())
+		// 这里不处理匿名字段，应由字段本身去根据类型去处理
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			fts = append(fts, field)
+		}
+		return fts
 	}
-	return fts
+
+	return nil
 }
 
 func (fs Fields) ToMap() map[string]reflect.StructField {
@@ -37,6 +52,8 @@ func (fs Fields) ToMap() map[string]reflect.StructField {
 	return ftm
 }
 
+// 字段和标签信息
+// 注意字段可能是embedded struct, 通过Field.Anonymous来判定
 type FieldTag struct {
 	Field reflect.StructField
 	Tag   string
@@ -62,6 +79,7 @@ func (fts FieldTags) ToTagMap() map[string]FieldTag {
 	return ftm
 }
 
+// ParseStructFields 从结构体或者结构体指针(指针非空值)中获取其字段以及标签信息
 func ParseStructFieldTags(s interface{}, tagName string) FieldTags {
 	fs := ParseStructFields(s)
 	if fs == nil {
@@ -70,13 +88,12 @@ func ParseStructFieldTags(s interface{}, tagName string) FieldTags {
 
 	fts := make([]FieldTag, 0, len(fs))
 	for _, v := range fs {
+		// 忽略非导出字段
 		if !v.IsExported() {
 			continue
 		}
-
 		tag := v.Tag.Get(tagName)
-
-		if tagName == "json" {
+		if tagName == JsonTag {
 			tag = strings.TrimSuffix(tag, ",omitempty")
 			if tag == "-" {
 				continue
