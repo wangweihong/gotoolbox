@@ -1,449 +1,182 @@
 package fieldutil
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
 	"reflect"
-	"strconv"
-	"strings"
 )
 
-// 当apiObject存在一个字段包含tagName:tagValues、且类型和internalObject一致,则设置该字段值为internalObject
-func SetWhenTagValueMatch(apiObject interface{}, internalObject interface{}, tagName, tagValue string) error {
-	if tagName == "" || tagValue == "" {
-		return fmt.Errorf("tagName and tagValue is empty")
-	}
+const (
+	JsonTag = "json"
+)
 
-	rv := reflect.ValueOf(apiObject)
-	rt := reflect.TypeOf(apiObject)
-	if rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-		rt = rt.Elem()
-	}
+type Fields []reflect.StructField
 
-	if rv.Kind() != reflect.Struct {
-		return fmt.Errorf("apiObject not struct")
-	}
-
-	if !rv.IsValid() {
-		return fmt.Errorf("apiObject not vaild")
-	}
-
-	for i := 0; i < rt.NumField(); i++ {
-		if rt.Field(i).Tag.Get(tagName) == tagValue {
-			// ensure apiObject has tagName/tagValue
-
-			// if internalObject is nil, do nothing.
-			if internalObject == nil {
-				return nil
-			}
-
-			if rt.Field(i).Type != reflect.TypeOf(internalObject) {
-				return fmt.Errorf("apiObject field with %v:\"%v\" type (%v) not equal to internalObject （%v）",
-					tagName, tagValue, rt.Field(i).Type, reflect.TypeOf(internalObject))
-			}
-
-			if rv.Field(i).CanSet() {
-				rv.Field(i).Set(reflect.ValueOf(internalObject))
-			}
-			return nil
-		}
-	}
-	return fmt.Errorf("missing field with tag json:data")
-}
-
-func CheckIfStructFieldMatch(apiObject interface{}, tagName, tagValuePoint string, compareValue interface{}) error {
-	if tagValuePoint == "" || strings.TrimSpace(tagValuePoint) == "." {
-		return fmt.Errorf("invalid tagValuePoint")
-	}
-
-	if apiObject == nil {
-		return fmt.Errorf("apiObject is nil")
-	}
-
-	valuePoints := strings.Split(tagValuePoint, ".")
-
-	rv := reflect.ValueOf(apiObject)
-	rt := reflect.TypeOf(apiObject)
-	if rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-		rt = rt.Elem()
-	}
-
-	if rv.Kind() != reflect.Struct {
-		return fmt.Errorf("apiObject not pointer")
-	}
-
-	if !rv.IsValid() {
-		return fmt.Errorf("apiObject not vaild")
-	}
-
-	for i := 0; i < rt.NumField(); i++ {
-		if rt.Field(i).Tag.Get(tagName) == valuePoints[0] {
-			// 查看valuepoint是否还有下一级
-			if len(valuePoints) > 1 {
-				if rv.Field(i).Kind() != reflect.Struct {
-					return fmt.Errorf("field kind should be struct when valuepoint has multple elem")
-				}
-
-				return CheckIfStructFieldMatch(
-					rv.Field(i).Interface(),
-					tagName,
-					strings.Join(valuePoints[1:], "."),
-					compareValue,
-				)
-			}
-
-			if rt.Field(i).Type != reflect.TypeOf(compareValue) {
-				return fmt.Errorf(
-					"value type not match fieldValue, value type (%v),field type(%v)",
-					rt.Field(i).Type,
-					reflect.TypeOf(compareValue),
-				)
-			}
-
-			// will this work?
-			// https://github.com/golang/go/issues/9504
-			if rv.Field(i).Interface() != reflect.ValueOf(compareValue).Interface() {
-				return fmt.Errorf("value not match")
-			}
-
-			return nil
-		}
-	}
-	return fmt.Errorf("cannot find field with tag %v:%v in object", tagName, valuePoints[0])
-}
-
-// 检测json Marshal bytes字节流中是否指定的字段如,而且值为compareValue。 如 china.shenzhen.baoan.cars[0].numberprefix是否等于"粤B"
-func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, compareValue interface{}) error {
-	if tagValuePoint == "" || strings.TrimSpace(tagValuePoint) == "." {
-		return fmt.Errorf("invalid tagValuePoint")
-	}
-
-	if apiObjectBytes == nil {
-		return fmt.Errorf("apiObject is nil")
-	}
-
-	valuePoints := strings.Split(tagValuePoint, ".")
-	mapKey := valuePoints[0]
-	// 如果是 data.slice[0], 则提取出slice索引，后续提取该元素进行比对
-	var sliceIndex int = -1
-	if strings.HasSuffix(mapKey, "]") {
-		k := strings.Index(mapKey, "[")
-		if k != 0 {
-			var err error
-			sliceIndex, err = strconv.Atoi(mapKey[k+1 : len(mapKey)-1])
-			if err != nil {
-				return err
-			}
-			//移除字段名中索引部分，才能从map中找到对应的值
-			mapKey = mapKey[:k]
-		}
-	}
-
-	//json unmarhsal默认会将数值转换成float64类型来存储。
-	//调用UserNumber会使用json.Number类型保存
-	//后续通过转换jsonNumber成Float或者Int
-	// 不要直接用json.Unmarshal.会导致数字转换成浮点类型
-	d := json.NewDecoder(bytes.NewReader(apiObjectBytes))
-	d.UseNumber()
-	obj := make(map[string]interface{})
-	if err := d.Decode(&obj); err != nil {
-		return err
-	}
-
-	fieldValue, ok := obj[mapKey]
-	if !ok {
-		return fmt.Errorf("field not exist:%v", mapKey)
-	}
-	fvt := reflect.TypeOf(fieldValue)
-	fvv := reflect.ValueOf(fieldValue)
-
-	// 只会有map/slice/string/int/float/bool类型!
-	switch fvt.Kind() {
-	//如果是数组,这需要处理两种情况1.比较整个数组，2.比较数组中某个元素
-	case reflect.Slice:
-		//某个元素
-		if sliceIndex != -1 {
-			//设置为指定元素值
-			if sliceIndex >= fvv.Len() {
-				return fmt.Errorf("invalid slice index [%v], out of slice range", sliceIndex)
-			}
-			indexValue := fvv.Index(sliceIndex).Interface()
-			fieldValue = indexValue
-			// 还需要查找下一层
-			if len(valuePoints) != 1 {
-				//没有遍历完，继续遍历
-				b, err := json.Marshal(fieldValue)
-				if err != nil {
-					return err
-				}
-
-				return CheckIfBytesStructFieldMatch(b, strings.Join(valuePoints[1:], "."), compareValue)
-			}
-
-			if reflect.TypeOf(fieldValue) != reflect.TypeOf(compareValue) {
-				return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
-					reflect.TypeOf(fieldValue), reflect.TypeOf(compareValue))
-			}
-
-			if fieldValue != compareValue {
-				return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
-					fieldValue, compareValue)
-			}
-			return nil
-		} else {
-			// 数组, 如果是数组就不能再走下一层
-			if len(valuePoints) != 1 {
-				return fmt.Errorf("data.slice[0].key or data.slice is good. but data.slice.key is not")
-			}
-
-			cv := reflect.ValueOf(compareValue)
-			if cv.Kind() != reflect.Slice {
-				return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
-					reflect.TypeOf(fieldValue), reflect.TypeOf(compareValue))
-			}
-
-			if cv.Len() != fvv.Len() {
-				return fmt.Errorf("compare field slice len not match")
-			}
-
-			for i := 0; i < cv.Len(); i++ {
-				if cv.Index(i).Interface() != fvv.Index(i).Interface() {
-					return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
-						cv.Index(i), fvv.Index(i))
-				}
-			}
-			return nil
-		}
-
-	case reflect.Map:
-		// 还需要查找下一层
-		if len(valuePoints) != 1 {
-			//没有遍历完，继续遍历
-			b, err := json.Marshal(fieldValue)
-			if err != nil {
-				return err
-			}
-
-			return CheckIfBytesStructFieldMatch(b, strings.Join(valuePoints[1:], "."), compareValue)
-		}
-
-		if reflect.TypeOf(fieldValue) != reflect.TypeOf(compareValue) {
-			return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
-				reflect.TypeOf(fieldValue), reflect.TypeOf(compareValue))
-		}
-
-		if fieldValue != compareValue {
-			return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
-				fieldValue, compareValue)
-		}
-
+// ParseStructFields 从结构体或者结构体指针(指针非空值)中获取其字段信息
+func ParseStructFields(s interface{}) Fields {
+	if s == nil {
 		return nil
+	}
 
-	default:
-		// 除了map和slice其他类型不会有下一层
-		if len(valuePoints) != 1 {
-			return fmt.Errorf("non-slice or non-map should has no child point")
-		}
-
-		if fvt == reflect.TypeOf(json.Number("")) {
-			switch reflect.TypeOf(compareValue).Kind() {
-			case reflect.Int, reflect.Int16, reflect.Int8, reflect.Int32, reflect.Int64:
-				jn := fieldValue.(json.Number)
-				jnInt64, err := jn.Int64()
-				if err != nil {
-					return err
-				}
-				if jnInt64 != reflect.ValueOf(compareValue).Int() {
-					return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
-						fieldValue, compareValue)
-				}
-
-			case reflect.Float64, reflect.Float32:
-				jn := fieldValue.(json.Number)
-				jnFloat, err := jn.Float64()
-				if err != nil {
-					return err
-				}
-				if jnFloat != reflect.ValueOf(compareValue).Float() {
-					return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
-						fieldValue, compareValue)
-				}
-			default:
-				if fvt != reflect.TypeOf(compareValue) {
-					return fmt.Errorf("type not match when type is json number, source(type:%v), target(type:%v)",
-						"json.Number", reflect.TypeOf(compareValue))
-				}
-			}
-		} else {
-			if fvt != reflect.TypeOf(compareValue) {
-				return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
-					fvt, reflect.TypeOf(compareValue))
-			}
-
-			if fieldValue != compareValue {
-				return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
-					fieldValue, compareValue)
-			}
+	typ := reflect.TypeOf(s)
+	vyp := reflect.ValueOf(s)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		vyp = vyp.Elem()
+		if !vyp.IsValid() {
+			return nil
 		}
 	}
+
+	if typ.Kind() != reflect.Struct {
+		return nil
+	}
+
+	if typ.NumField() != 0 {
+		fts := make([]reflect.StructField, 0, typ.NumField())
+		// 这里不处理匿名字段，应由字段本身去根据类型去处理
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			//	vfield := vyp.Field(i)
+			fts = append(fts, field)
+		}
+		return fts
+	}
+
 	return nil
 }
 
-func GetStructFieldValue(object interface{}, tagValuePoint string) (interface{}, error) {
-	if object == nil {
-		return nil, fmt.Errorf("object is nil")
+func (fs Fields) ToMap() map[string]reflect.StructField {
+	ftm := make(map[string]reflect.StructField, len(fs))
+	for _, v := range fs {
+		ftm[v.Name] = v
 	}
-
-	b, err := json.Marshal(object)
-	if err != nil {
-		return nil, err
-	}
-	return GetBytesStructField(b, tagValuePoint)
+	return ftm
 }
 
-// 提取json Marshal bytes字节流中是否指定的字段值 如 china.shenzhen.baoan.cars[0].numberprefix
-func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface{}, error) {
-	if tagValuePoint == "" || strings.TrimSpace(tagValuePoint) == "." {
-		return nil, fmt.Errorf("invalid tagValuePoint")
+type FieldValue struct {
+	Index int
+	T     reflect.StructField
+	V     reflect.Value
+}
+
+type FieldValues []FieldValue
+
+// ParseStructFieldValues 从结构体或者结构体指针(指针非空值)中获取其字段信息和值
+func ParseStructFieldValues(s interface{}) FieldValues {
+	if s == nil {
+		return nil
 	}
 
-	if apiObjectBytes == nil {
-		return nil, fmt.Errorf("apiObject is nil")
-	}
-
-	valuePoints := strings.Split(tagValuePoint, ".")
-	mapKey := valuePoints[0]
-	// 如果是 data.slice[0], 则提取出slice索引，后续提取该元素进行比对
-	var sliceIndex int = -1
-	if strings.HasSuffix(mapKey, "]") {
-		k := strings.Index(mapKey, "[")
-		if k != 0 {
-			var err error
-			sliceIndex, err = strconv.Atoi(mapKey[k+1 : len(mapKey)-1])
-			if err != nil {
-				return nil, err
-			}
-			//移除字段名中索引部分，才能从map中找到对应的值
-			mapKey = mapKey[:k]
+	typ := reflect.TypeOf(s)
+	vyp := reflect.ValueOf(s)
+	if typ.Kind() == reflect.Ptr {
+		typ = typ.Elem()
+		vyp = vyp.Elem()
+		if !vyp.IsValid() {
+			return nil
 		}
 	}
 
-	//json unmarhsal默认会将数值转换成float64类型来存储。
-	//调用UserNumber会使用json.Number类型保存
-	//后续通过转换jsonNumber成Float或者Int
-	// 不要直接用json.Unmarshal.会导致数字转换成浮点类型
-	d := json.NewDecoder(bytes.NewReader(apiObjectBytes))
-	d.UseNumber()
-	obj := make(map[string]interface{})
-	if err := d.Decode(&obj); err != nil {
-		return nil, err
+	if typ.Kind() != reflect.Struct {
+		return nil
 	}
 
-	fieldValue, ok := obj[mapKey]
-	if !ok {
-		return nil, fmt.Errorf("field not exist:%v", mapKey)
-	}
-	fvt := reflect.TypeOf(fieldValue)
-	fvv := reflect.ValueOf(fieldValue)
+	if typ.NumField() != 0 {
+		fts := make([]FieldValue, 0, typ.NumField())
+		// 这里不处理匿名字段，应由字段本身去根据类型去处理
+		for i := 0; i < typ.NumField(); i++ {
+			ft := typ.Field(i)
+			fv := vyp.Field(i)
 
-	// 只会有map/slice/string/int/float/bool类型!
-	switch fvt.Kind() {
-	//如果是数组,这需要处理两种情况1.比较整个数组，2.比较数组中某个元素
-	case reflect.Slice:
-		//某个元素
-		if sliceIndex != -1 {
-			//设置为指定元素值
-			if sliceIndex >= fvv.Len() {
-				return nil, fmt.Errorf("invalid slice index [%v], out of slice range", sliceIndex)
-			}
-			indexValue := fvv.Index(sliceIndex).Interface()
-			fieldValue = indexValue
-			// 还需要查找下一层
-			if len(valuePoints) != 1 {
-				//没有遍历完，继续遍历
-				b, err := json.Marshal(fieldValue)
-				if err != nil {
-					return nil, err
+			fts = append(fts, FieldValue{
+				Index: i,
+				T:     ft,
+				V:     fv,
+			})
+		}
+		return fts
+	}
+
+	return nil
+}
+
+func (fs FieldValues) ToMap() map[string]FieldValue {
+	ftm := make(map[string]FieldValue, len(fs))
+	for _, v := range fs {
+		ftm[v.T.Name] = v
+	}
+	return ftm
+}
+
+func (fs FieldValues) ExportedList() FieldValues {
+	ftm := make([]FieldValue, len(fs))
+	for _, v := range fs {
+		if v.T.IsExported() {
+			ftm = append(ftm, v)
+		}
+	}
+	return ftm
+}
+
+func (fs FieldValues) FieldByName(fieldName string, opts ...FieldOption) *FieldValue {
+	var fo fieldOption
+	for _, o := range opts {
+		o(&fo)
+	}
+
+	for _, v := range fs {
+		if fo.export && !v.T.IsExported() {
+			continue
+		}
+
+		if v.T.Name == fieldName {
+			return &v
+		}
+
+		// 解析匿名结构体
+		if fo.iterate {
+			if v.T.Anonymous {
+				elem := v.V
+				if v.T.Type.Kind() == reflect.Ptr {
+					elem = v.V.Elem()
 				}
 
-				return GetBytesStructField(b, strings.Join(valuePoints[1:], "."))
+				if elem.Kind() != reflect.Struct {
+					continue
+				}
+
+				ffs := ParseStructFieldValues(elem.Interface())
+				if ffs != nil {
+					ffv := ffs.FieldByName(fieldName)
+					if ffv != nil {
+						// 嵌套结构的索引不能使用
+						ffv.Index = -1
+						return ffv
+					}
+				}
 			}
-
-			return fieldValue, nil
-		} else {
-			// 数组, 如果是数组就不能再走下一层
-			if len(valuePoints) != 1 {
-				return nil, fmt.Errorf("data.slice[0].key or data.slice is good. but data.slice.key is not")
-			}
-
-			return fvv.Interface(), nil
-		}
-
-	case reflect.Map:
-		// 还需要查找下一层
-		if len(valuePoints) != 1 {
-			//没有遍历完，继续遍历
-			b, err := json.Marshal(fieldValue)
-			if err != nil {
-				return nil, err
-			}
-
-			return GetBytesStructField(b, strings.Join(valuePoints[1:], "."))
-		}
-
-		return fieldValue, nil
-
-	default:
-		// 除了map和slice其他类型不会有下一层
-		if len(valuePoints) != 1 {
-			return nil, fmt.Errorf("non-slice or non-map should has no child point")
 		}
 	}
-	return fvv.Interface(), nil
+
+	return nil
 }
 
-func SetWhenFieldValueTypeMatch(apiObject interface{}, fieldName string, fieldValues interface{}) error {
-	if fieldName == "" {
-		return fmt.Errorf("fieldName not set")
-	}
+type fieldOption struct {
+	// 递归匿名结构体
+	iterate bool
+	// 只返回导出字段
+	export bool
+}
 
-	rv := reflect.ValueOf(apiObject)
-	rt := reflect.TypeOf(apiObject)
-	if rv.Kind() == reflect.Ptr {
-		rv = rv.Elem()
-		rt = rt.Elem()
-	}
+type FieldOption func(*fieldOption)
 
-	if rv.Kind() != reflect.Struct {
-		return fmt.Errorf("apiObject not struct,%v", rv.Kind())
+func WithIterate() FieldOption {
+	return func(c *fieldOption) {
+		c.iterate = true
 	}
+}
 
-	if !rv.IsValid() {
-		return fmt.Errorf("apiObject not vaild")
+func WithExport() FieldOption {
+	return func(c *fieldOption) {
+		c.export = true
 	}
-
-	sft, exist := rt.FieldByName(fieldName)
-	if !exist {
-		return fmt.Errorf("apiObject doesn't has field named %v", fieldName)
-	}
-	fv := rv.FieldByName(fieldName)
-	ft := sft.Type
-	if !fv.CanSet() {
-		return fmt.Errorf("field %v cannot set", fieldName)
-	}
-
-	if ft != reflect.TypeOf(fieldValues) {
-		return fmt.Errorf(
-			"type not match, field %v type is %v while passing value type is %v",
-			fieldName,
-			ft,
-			reflect.TypeOf(fieldValues),
-		)
-	}
-
-	fv.Set(reflect.ValueOf(fieldValues))
-	return nil
 }
