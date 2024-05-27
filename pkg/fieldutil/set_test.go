@@ -1,7 +1,6 @@
 package fieldutil
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -314,17 +313,23 @@ func TestGetBytesStructField(t *testing.T) {
 		Convey("字符串", func() {
 			data, err := GetBytesStructField([]byte(bytedata), "kind")
 			So(err, ShouldBeNil)
-			fmt.Println(data)
+			So(data, ShouldResemble, "SubjectAccessReview")
 		})
 		Convey("数组", func() {
 			data, err := GetBytesStructField([]byte(bytedata), "spec.group")
 			So(err, ShouldBeNil)
-			fmt.Println(data)
+			So(data, ShouldResemble, []any{"system:authenticated", "test"})
 		})
 		Convey("数组元素", func() {
 			data, err := GetBytesStructField([]byte(bytedata), "spec.group[1]")
 			So(err, ShouldBeNil)
-			fmt.Println(data)
+			So(data, ShouldResemble, "test")
+		})
+
+		Convey("不存在", func() {
+			_, err := GetBytesStructField([]byte(bytedata), "spec.group[10]")
+			So(err, ShouldNotBeNil)
+			So(err.Error(), ShouldEqual, "invalid slice index [10], out of slice range")
 		})
 	})
 }

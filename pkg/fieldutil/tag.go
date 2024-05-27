@@ -54,7 +54,7 @@ func ParseStructFieldTags(s interface{}, tagName string) FieldTags {
 		}
 
 		fts = append(fts, FieldTag{
-			Field: v,
+			Field: v.T,
 			Tag:   tag,
 		})
 	}
