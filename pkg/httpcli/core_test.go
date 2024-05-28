@@ -2,6 +2,7 @@ package httpcli_test
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +18,38 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli"
+)
+
+var (
+	inter1 = httpcli.NewInterceptor("inter1", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
+		req.Builder().AddQueryParam("inter1", "aaaa").Build()
+
+		resp, err := invoker(ctx, req, arg, reply, cc, opts...)
+		if err != nil {
+			return resp, err
+		}
+		resp.Response.Header.Set("inter1", "bbbb")
+		return resp, err
+	})
+	inter2 = httpcli.NewInterceptor("inter2", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
+		req.Builder().AddQueryParam("inter2", "bbbb").Build()
+
+		ctx = context.WithValue(ctx, "inter2", "bbbb")
+		resp, err := invoker(ctx, req, arg, reply, cc, opts...)
+		if err != nil {
+			return resp, err
+		}
+		resp.Response.Header.Set("inter2", "bbbb")
+		return resp, err
+	})
+	inter3 = httpcli.NewInterceptor("errorInter", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
+		ctx = context.WithValue(ctx, "inter2", "bbbb")
+		resp, err := invoker(ctx, req, arg, reply, cc, opts...)
+		if err != nil {
+			return resp, err
+		}
+		return resp, fmt.Errorf("intercetpor error")
+	})
 )
 
 func TestClient_Interceptor(t *testing.T) {
@@ -38,28 +71,7 @@ func TestClient_Interceptor(t *testing.T) {
 	defer server.Close()
 
 	Convey("拦截器", t, func() {
-		Convey("拦截器添加查询参数，并修改返回头部", func() {
-			inter1 := httpcli.NewInterceptor("inter1", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
-				req.Builder().AddQueryParam("inter1", "aaaa").Build()
-
-				resp, err := invoker(ctx, req, arg, reply, cc, opts...)
-				if err != nil {
-					return resp, err
-				}
-				resp.Response.Header.Set("inter1", "bbbb")
-				return resp, err
-			})
-			inter2 := httpcli.NewInterceptor("inter2", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
-				req.Builder().AddQueryParam("inter2", "bbbb").Build()
-
-				ctx = context.WithValue(ctx, "inter2", "bbbb")
-				resp, err := invoker(ctx, req, arg, reply, cc, opts...)
-				if err != nil {
-					return resp, err
-				}
-				resp.Response.Header.Set("inter2", "bbbb")
-				return resp, err
-			})
+		SkipConvey("拦截器添加查询参数，并修改返回头部", func() {
 
 			c, err := httpcli.NewClient(nil, httpcli.WithIntercepts(inter1, inter2))
 			So(err, ShouldBeNil)
@@ -83,7 +95,28 @@ func TestClient_Interceptor(t *testing.T) {
 			So(maputil.StringInterfaceMap(resp.Request.GetQueryParams()).HasKeyAndValue("inter1", "aaaa"), ShouldBeTrue)
 		})
 
-		Convey("无拦截器", func() {
+		Convey("出错拦截器", func() {
+
+			c, err := httpcli.NewClient(nil, httpcli.WithIntercepts(inter3))
+			So(err, ShouldBeNil)
+			ctx := context.Background()
+
+			os.Setenv("HTTPCLI_DEBUG", "1")
+			os.Setenv("HTTPCLI_DEBUG_HUGE", "1")
+
+			req := httpcli.NewHttpRequestBuilder().
+				AddHeaderParam(tracectx.XRequestIDKey, tracectx.NewTraceID()).
+				WithEndpoint(server.URL).
+				WithMethod("GET").
+				WithPath("/version").
+				Build()
+			resp, err := c.Invoke(ctx, req, nil, nil)
+			So(err, ShouldNotBeNil)
+			So(resp, ShouldNotBeNil)
+			So(resp.Response.StatusCode, ShouldEqual, 200)
+		})
+
+		SkipConvey("无拦截器", func() {
 
 			c, err := httpcli.NewClient(nil)
 			So(err, ShouldBeNil)

@@ -10,8 +10,6 @@ import (
 
 	"github.com/wangweihong/gotoolbox/pkg/errors"
 
-	"github.com/wangweihong/gotoolbox/pkg/log"
-
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/httpconfig"
 )
 
@@ -75,8 +73,12 @@ func (c *Client) Invoke(
 		file, line, fn := callerutil.CallerDepth(3)
 		callerMsg = fmt.Sprintf("%s:%s:%d", file, fn, line)
 
-		log.L(ctx).F(ctx).Info("Client Invoke Called", log.String("caller", callerMsg))
-		defer log.L(ctx).F(ctx).Info("Client Invoke Ended", log.String("caller", callerMsg), log.Err(err))
+		caller := map[string]interface{}{"caller": callerMsg}
+		debugLog(ctx, caller, "Client Invoke Called")
+		defer func() {
+			caller["err"] = errors.Message(err)
+			debugLog(ctx, caller, "Client Invoke Ended")
+		}()
 	}
 
 	//  允许特定请求单独设置拦截器

@@ -6,8 +6,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/wangweihong/gotoolbox/pkg/callerutil"
+	"github.com/wangweihong/gotoolbox/pkg/json"
+
 	"github.com/wangweihong/gotoolbox/pkg/log"
+
+	"github.com/wangweihong/gotoolbox/pkg/callerutil"
 	"github.com/wangweihong/gotoolbox/pkg/maputil"
 )
 
@@ -24,7 +27,8 @@ func logHugeEnabled() bool {
 
 func logInfoIf(ctx context.Context, msg string) {
 	if logEnabled() {
-		log.L(ctx).F(ctx).Info(msg)
+		debugLog(ctx, nil, msg)
+		//log.L(ctx).F(ctx).Info(msg)
 	}
 }
 
@@ -33,7 +37,6 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 	fields["req_time_begin"] = start.Format("2006-01-02 15:04:05.000000")
 	fields["req_raw_url"] = req.GetPath()
 	fields["req_method"] = req.GetMethod()
-	fields["req_headers"] = req.headerParams
 
 	end := time.Now()
 	Latency := time.Since(start)
@@ -49,20 +52,21 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 	if rawResp != nil {
 		fields["resp_status"] = rawResp.GetStatusCode()
 		fields["resp_body_length"] = len(rawResp.GetBody())
-		fields["resp_headers"] = rawResp.GetHeaders()
 		fields["req_url"] = reqURL
 		fields["req_media_type"] = rawResp.GetHeader("Content-Type")
 		fields["req_addr"] = reqAddr
 
 		if logHugeEnabled() {
 			fields["resp_body"] = rawResp.GetBody()
+			fields["resp_headers"] = json.ToString(rawResp.GetHeaders())
 		}
 	}
 
 	if logHugeEnabled() {
-		fields["req_body"] = req.bodyData
-		fields["func_arg"] = arg
-		fields["func_reply"] = reply
+		fields["req_headers"] = json.ToString(req.headerParams)
+		fields["req_body"] = json.ToString(req.bodyData)
+		fields["func_arg"] = json.ToString(arg)
+		fields["func_reply"] = json.ToString(reply)
 	}
 	fields["error"] = err
 	return fields
@@ -84,6 +88,14 @@ func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *
 			fields.Get("req_method"),
 			fields.Get("req_url"),
 		)
-		log.L(ctx).Fields(fields).Info(simpleCallInfo)
+		debugLog(ctx, fields, simpleCallInfo)
 	}
+}
+
+func debugLog(ctx context.Context, fields map[string]interface{}, msg string) {
+	log.L(ctx).F(ctx).Fields(fields).Info(msg)
+	//fmt.Println(msg)
+	//if fields != nil {
+	//	json.PrintStructObject(fields)
+	//}
 }

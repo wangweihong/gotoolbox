@@ -24,7 +24,7 @@ func StatusCodeInterceptor(name string, skipperFunc ...skipper.SkipperFunc) http
 		}
 
 		if rawResp.GetStatusCode() != http.StatusOK {
-			return rawResp, fmt.Errorf("status code not 200")
+			return rawResp, fmt.Errorf("status code not 200, is %v", rawResp.GetStatusCode())
 		}
 
 		return rawResp, nil
