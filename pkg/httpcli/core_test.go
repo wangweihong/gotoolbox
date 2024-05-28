@@ -5,7 +5,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
+
+	"github.com/wangweihong/gotoolbox/pkg/log"
+
+	"github.com/wangweihong/gotoolbox/pkg/tracectx"
 
 	"github.com/wangweihong/gotoolbox/pkg/maputil"
 
@@ -29,14 +34,12 @@ func TestClient_Interceptor(t *testing.T) {
 				return
 			}
 		}
-
-		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
 
 	Convey("拦截器", t, func() {
 		Convey("拦截器添加查询参数，并修改返回头部", func() {
-			inter1 := func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
+			inter1 := httpcli.NewInterceptor("inter1", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
 				req.Builder().AddQueryParam("inter1", "aaaa").Build()
 
 				resp, err := invoker(ctx, req, arg, reply, cc, opts...)
@@ -45,8 +48,8 @@ func TestClient_Interceptor(t *testing.T) {
 				}
 				resp.Response.Header.Set("inter1", "bbbb")
 				return resp, err
-			}
-			inter2 := func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
+			})
+			inter2 := httpcli.NewInterceptor("inter2", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
 				req.Builder().AddQueryParam("inter2", "bbbb").Build()
 
 				ctx = context.WithValue(ctx, "inter2", "bbbb")
@@ -56,13 +59,17 @@ func TestClient_Interceptor(t *testing.T) {
 				}
 				resp.Response.Header.Set("inter2", "bbbb")
 				return resp, err
-			}
+			})
 
 			c, err := httpcli.NewClient(nil, httpcli.WithIntercepts(inter1, inter2))
 			So(err, ShouldBeNil)
 			ctx := context.Background()
 
+			os.Setenv("HTTPCLI_DEBUG", "1")
+			os.Setenv("HTTPCLI_DEBUG_HUGE", "1")
+
 			req := httpcli.NewHttpRequestBuilder().
+				AddHeaderParam(tracectx.XRequestIDKey, tracectx.NewTraceID()).
 				WithEndpoint(server.URL).
 				WithMethod("GET").
 				WithPath("/version").
@@ -74,6 +81,26 @@ func TestClient_Interceptor(t *testing.T) {
 			So(resp.Response.Header.Get("inter2"), ShouldEqual, "bbbb")
 			So(maputil.StringInterfaceMap(resp.Request.GetQueryParams()).HasKeyAndValue("inter2", "bbbb"), ShouldBeTrue)
 			So(maputil.StringInterfaceMap(resp.Request.GetQueryParams()).HasKeyAndValue("inter1", "aaaa"), ShouldBeTrue)
+		})
+
+		Convey("无拦截器", func() {
+
+			c, err := httpcli.NewClient(nil)
+			So(err, ShouldBeNil)
+			ctx := context.Background()
+
+			os.Setenv("HTTPCLI_DEBUG", "1")
+			os.Setenv("HTTPCLI_DEBUG_HUGE", "1")
+			ctx = context.WithValue(ctx, log.KeyRequestID, tracectx.NewTraceID())
+
+			req := httpcli.NewHttpRequestBuilder().
+				WithEndpoint(server.URL).
+				WithMethod("GET").
+				WithPath("/version").
+				Build()
+			resp, err := c.Invoke(ctx, req, nil, nil)
+			So(err, ShouldBeNil)
+			So(resp.Response.StatusCode, ShouldEqual, 200)
 		})
 	})
 }

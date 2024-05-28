@@ -4,12 +4,15 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
+	"time"
 
 	"github.com/wangweihong/gotoolbox/pkg/callerutil"
 
-	"github.com/wangweihong/gotoolbox/pkg/httpcli/httpconfig"
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"github.com/wangweihong/gotoolbox/pkg/log"
+
+	"github.com/wangweihong/gotoolbox/pkg/httpcli/httpconfig"
 )
 
 type Client struct {
@@ -51,8 +54,6 @@ func NewClient(cfg *httpconfig.HttpConfig, options ...Option) (*Client, error) {
 	return c, nil
 }
 
-type Interceptor func(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error)
-
 func (c *Client) Invoke(
 	/*
 			注意1. ctx的生命周期,如果Client在一个服务请求的异步动作,不能直接使用服务请求的ctx。否则当服务器结束后,context撤销
@@ -65,19 +66,24 @@ func (c *Client) Invoke(
 	arg, reply interface{},
 	opts ...CallOption,
 ) (*HttpResponse, error) {
-	file, line, fn := callerutil.CallerDepth(2)
-	callerMsg := fmt.Sprintf("%s:%s:%d", file, fn, line)
+
+	var callerMsg string
+	var err error
+	var rawResp *HttpResponse
+
+	if logEnabled() {
+		file, line, fn := callerutil.CallerDepth(3)
+		callerMsg = fmt.Sprintf("%s:%s:%d", file, fn, line)
+
+		log.L(ctx).F(ctx).Info("Client Invoke Called", log.String("caller", callerMsg))
+		defer log.L(ctx).F(ctx).Info("Client Invoke Ended", log.String("caller", callerMsg), log.Err(err))
+	}
 
 	//  允许特定请求单独设置拦截器
 	ci := &callInfo{}
 	for _, o := range opts {
 		o(ci)
 	}
-	//if ci.header != nil {
-	//	for k := range ci.header {
-	//		req.Builder().AddHeaderParam(k, ci.header.Get(k))
-	//	}
-	//}
 
 	chainInterceptors := c.chainInterceptors
 	if ci.chainInterceptors != nil {
@@ -85,24 +91,21 @@ func (c *Client) Invoke(
 	}
 
 	if chainInterceptors != nil {
-		rawResp, err := chainInterceptors[0](
+		rawResp, err = chainInterceptors[0].Intercept(
 			ctx,
 			req,
 			arg,
 			reply,
 			c,
-			getChainUnaryInvoker(chainInterceptors, 0, invoke),
+			getChainUnaryInvoker(chainInterceptors, 0, invokeLogWrapper),
 			opts...)
 
-		log.F(ctx).L(ctx).
-			Debug("Interceptor Invoked called.", log.String("caller", callerMsg), log.Err(err), log.Every("arg", arg), log.Every("reply", reply))
-		return rawResp, err
+		return rawResp, errors.UpdateStack(err)
 	}
 
-	rawResp, err := invoke(ctx, req, arg, reply, c, opts...)
-	log.F(ctx).L(ctx).
-		Debug("Invoked called.", log.String("caller", callerMsg), log.Err(err), log.Every("arg", arg), log.Every("reply", reply))
-	return rawResp, err
+	rawResp, err = invokeLogWrapper(ctx, req, arg, reply, c, opts...)
+
+	return rawResp, errors.UpdateStack(err)
 }
 
 func getChainUnaryInvoker(interceptors []Interceptor, curr int, finalInvoker Invoker) Invoker {
@@ -110,7 +113,7 @@ func getChainUnaryInvoker(interceptors []Interceptor, curr int, finalInvoker Inv
 		return finalInvoker
 	}
 	return func(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, opts ...CallOption) (*HttpResponse, error) {
-		return interceptors[curr+1](
+		rawResp, err := interceptors[curr+1].Intercept(
 			ctx,
 			req,
 			arg,
@@ -118,14 +121,28 @@ func getChainUnaryInvoker(interceptors []Interceptor, curr int, finalInvoker Inv
 			cc,
 			getChainUnaryInvoker(interceptors, curr+1, finalInvoker),
 			opts...)
+		return rawResp, err
 	}
 }
 
 type Invoker func(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, opt ...CallOption) (*HttpResponse, error)
 
-func logEnabled() bool {
-	debugEnv := os.Getenv("HTTPCLI_DEBUG")
-	return debugEnv != "" && debugEnv != "0"
+// nolint: funlen,gocognit
+func invokeLogWrapper(
+	ctx context.Context,
+	req *HttpRequest,
+	arg interface{},
+	reply interface{},
+	c *Client,
+	opt ...CallOption,
+) (*HttpResponse, error) {
+	startTime := time.Now()
+	logInfoIf(ctx, "Core called.")
+	httpResp, err := invoke(ctx, req, arg, reply, c, opt...)
+	debugCore(ctx, startTime, req, httpResp, arg, reply, err)
+	logInfoIf(ctx, "Core end")
+
+	return httpResp, errors.UpdateStack(err)
 }
 
 // nolint: funlen,gocognit
@@ -153,17 +170,17 @@ func invoke(
 	// 转换成原生http请求
 	httpReq, err := req.ConvertRequestWithContext(ctx)
 	if err != nil {
-		return nil, err
+		return nil, errors.UpdateStack(err)
 	}
 
 	// 请求前处理. 如一些场景需要对请求参数进行签名
 	if err := c.preRequestProcess(httpReq, ci); err != nil {
-		return nil, err
+		return nil, errors.UpdateStack(err)
 	}
 
 	resp, err := c.conn.Do(httpReq)
 	if err != nil {
-		return nil, err
+		return nil, errors.UpdateStack(err)
 	}
 
 	// 请求后处理

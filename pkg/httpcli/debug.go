@@ -1,0 +1,89 @@
+package httpcli
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/callerutil"
+	"github.com/wangweihong/gotoolbox/pkg/log"
+	"github.com/wangweihong/gotoolbox/pkg/maputil"
+)
+
+func logEnabled() bool {
+	debugEnv := os.Getenv("HTTPCLI_DEBUG")
+	return debugEnv != "" && debugEnv != "0"
+}
+
+// 打印请求/回应参数, 以及http response body
+func logHugeEnabled() bool {
+	debugEnv := os.Getenv("HTTPCLI_DEBUG_HUGE")
+	return debugEnv != "" && debugEnv != "0"
+}
+
+func logInfoIf(ctx context.Context, msg string) {
+	if logEnabled() {
+		log.L(ctx).F(ctx).Info(msg)
+	}
+}
+
+func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply interface{}, err error) maputil.StringInterfaceMap {
+	fields := make(map[string]interface{})
+	fields["req_time_begin"] = start.Format("2006-01-02 15:04:05.000000")
+	fields["req_raw_url"] = req.GetPath()
+	fields["req_method"] = req.GetMethod()
+	fields["req_headers"] = req.headerParams
+
+	end := time.Now()
+	Latency := time.Since(start)
+	if Latency > time.Minute {
+		// Truncate in a golang < 1.8 safe way
+		Latency -= Latency % time.Second
+	}
+	fields["req_latency_ms"] = Latency
+	fields["req_time_end"] = end.Format("2006-01-02 15:04:05.000000")
+
+	reqURL := req.GetFullRequestAddress()
+	reqAddr := req.GetEndpoint()
+	if rawResp != nil {
+		fields["resp_status"] = rawResp.GetStatusCode()
+		fields["resp_body_length"] = len(rawResp.GetBody())
+		fields["resp_headers"] = rawResp.GetHeaders()
+		fields["req_url"] = reqURL
+		fields["req_media_type"] = rawResp.GetHeader("Content-Type")
+		fields["req_addr"] = reqAddr
+
+		if logHugeEnabled() {
+			fields["resp_body"] = rawResp.GetBody()
+		}
+	}
+
+	if logHugeEnabled() {
+		fields["req_body"] = req.bodyData
+		fields["func_arg"] = arg
+		fields["func_reply"] = reply
+	}
+	fields["error"] = err
+	return fields
+}
+
+func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply interface{}, err error) {
+	if logEnabled() {
+		file, line, fn := callerutil.CallerDepth(4)
+		callerMsg := fmt.Sprintf("%s:%s:%d", file, fn, line)
+
+		fields := callEntry(start, req, rawResp, arg, reply, err)
+		fields["caller"] = callerMsg
+
+		simpleCallInfo := fmt.Sprintf(
+			"%3d - [%s] %v %s  %s",
+			fields.Get("resp_status"),
+			fields.Get("req_addr"),
+			fields.Get("req_latency_ms"),
+			fields.Get("req_method"),
+			fields.Get("req_url"),
+		)
+		log.L(ctx).Fields(fields).Info(simpleCallInfo)
+	}
+}

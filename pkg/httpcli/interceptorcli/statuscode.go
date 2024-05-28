@@ -11,7 +11,7 @@ import (
 )
 
 func StatusCodeInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli.Interceptor {
-	return func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client,
+	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client,
 		invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
 		if skipper.Skip(req.GetPath(), skipperFunc...) {
 			log.F(ctx).Debugf("skip interceptor %s for rawrurl %s", name, req.GetPath())
@@ -28,5 +28,5 @@ func StatusCodeInterceptor(name string, skipperFunc ...skipper.SkipperFunc) http
 		}
 
 		return rawResp, nil
-	}
+	})
 }
