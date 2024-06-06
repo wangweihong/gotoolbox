@@ -45,14 +45,13 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 	fields["req_latency_ms"] = Latency
 	fields["req_time_end"] = end.Format("2006-01-02 15:04:05.000000")
 
-	reqURL := req.GetFullRequestAddress()
-	reqAddr := req.GetEndpoint()
+	fields["req_addr"] = req.GetEndpoint()
+	fields["req_url"] = req.GetFullRequestAddress()
+
 	if rawResp != nil {
 		fields["resp_status"] = rawResp.GetStatusCode()
 		fields["resp_body_length"] = len(rawResp.GetBody())
-		fields["req_url"] = reqURL
 		fields["req_media_type"] = rawResp.GetHeader("Content-Type")
-		fields["req_addr"] = reqAddr
 
 		if logHugeEnabled() {
 			fields["resp_body"] = rawResp.GetBody()
@@ -79,7 +78,7 @@ func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *
 		fields["caller"] = callerMsg
 
 		simpleCallInfo := fmt.Sprintf(
-			"%3d - [%s] %v %s  %s",
+			"%v - [%s] %v %s  %s",
 			fields.Get("resp_status"),
 			fields.Get("req_addr"),
 			fields.Get("req_latency_ms"),
