@@ -48,7 +48,7 @@ func PrettyPrint(b []byte) {
 	fmt.Printf("%s\n", out.Bytes())
 }
 
-func StructToString(obj interface{}) string {
+func ToString(obj interface{}) string {
 	b, err := json.Marshal(obj)
 	if err != nil {
 		return ""

@@ -34,11 +34,11 @@ func TestNewWorkequeueSyncer(t *testing.T) {
 			return nil
 		}, workqueue.New(), 3*time.Second, 1, 3)
 		s.Run(stop)
-		s.Trigger("123")
-		s.Trigger("123")
+		s.Trigger("123", false)
+		s.Trigger("123", false)
 
 		go wait.Until(func() {
-			s.Trigger("123")
+			s.Trigger("123", false)
 		}, 300*time.Second, stop)
 
 		go func() {

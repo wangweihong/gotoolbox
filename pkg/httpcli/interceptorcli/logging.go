@@ -12,7 +12,7 @@ import (
 )
 
 func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli.Interceptor {
-	return func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client,
+	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client,
 		invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
 		if skipper.Skip(req.GetPath(), skipperFunc...) {
 			log.F(ctx).Debugf("skip interceptor %s for rawrurl %s", name, req.GetPath())
@@ -33,7 +33,7 @@ func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli
 			// Truncate in a golang < 1.8 safe way
 			Latency -= Latency % time.Second
 		}
-		fields["req_latency"] = Latency
+		fields["req_latency_ms"] = Latency
 		fields["req_time_end"] = end.Format("2006-01-02 15:04:05.000000")
 
 		reqURL := req.GetFullRequestAddress()
@@ -62,5 +62,5 @@ func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli
 			return rawResp, err
 		}
 		return rawResp, nil
-	}
+	})
 }

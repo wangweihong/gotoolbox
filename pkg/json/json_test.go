@@ -45,3 +45,11 @@ func TestRawMarshalData(t *testing.T) {
 
 	})
 }
+
+func TestToString(t *testing.T) {
+	Convey("toString", t, func() {
+		So(json.ToString(nil), ShouldEqual, "null")
+		So(json.ToString(2), ShouldEqual, "2")
+		So(json.ToString(false), ShouldEqual, "false")
+	})
+}

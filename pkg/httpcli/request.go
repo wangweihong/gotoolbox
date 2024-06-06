@@ -86,6 +86,10 @@ func (r *HttpRequest) GetFullRequestAddress() string {
 	return req.URL.String()
 }
 
+func (r *HttpRequest) GetBodyData() interface{} {
+	return r.bodyData
+}
+
 func (r *HttpRequest) GetBodyToBytes() (*bytes.Buffer, error) {
 	buf := &bytes.Buffer{}
 
