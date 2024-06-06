@@ -8,8 +8,6 @@ import (
 
 	"github.com/wangweihong/gotoolbox/pkg/json"
 
-	"github.com/wangweihong/gotoolbox/pkg/log"
-
 	"github.com/wangweihong/gotoolbox/pkg/callerutil"
 	"github.com/wangweihong/gotoolbox/pkg/maputil"
 )
@@ -93,9 +91,24 @@ func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *
 }
 
 func debugLog(ctx context.Context, fields map[string]interface{}, msg string) {
-	log.L(ctx).F(ctx).Fields(fields).Info(msg)
-	//fmt.Println(msg)
-	//if fields != nil {
-	//	json.PrintStructObject(fields)
-	//}
+	debugLogger.Info(ctx, fields, msg)
+}
+
+var debugLogger Logger = fmtLogger{}
+
+type Logger interface {
+	Info(context.Context, map[string]interface{}, string)
+}
+
+func SetLogger(logger2 Logger) {
+	debugLogger = logger2
+}
+
+type fmtLogger struct{}
+
+func (fl fmtLogger) Info(ctx context.Context, fields map[string]interface{}, msg string) {
+	fmt.Println(msg)
+	if fields != nil {
+		json.PrintStructObject(fields)
+	}
 }
