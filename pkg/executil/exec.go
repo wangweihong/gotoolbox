@@ -1,3 +1,6 @@
+//go:build !windows
+// +build !windows
+
 package executil
 
 import (
@@ -15,7 +18,7 @@ const (
 	ExecuteTime = 60
 )
 
-func ExecuteTimeoutEnvByUser(binary string, args []string, seconds int, env []string, executeUser string) (string, error) {
+func ExecuteTimeoutEnvByUser(binary string, args []string, timeout time.Duration, env []string, executeUser string) (string, error) {
 	var output []byte
 	var err error
 	cmd := exec.Command(binary, args...)
@@ -39,7 +42,7 @@ func ExecuteTimeoutEnvByUser(binary string, args []string, seconds int, env []st
 
 	select {
 	case <-done:
-	case <-time.After(time.Duration(seconds) * time.Second):
+	case <-time.After(timeout):
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
@@ -64,22 +67,22 @@ func ExecuteByUser(binary string, args []string, executeUser string) (string, er
 	return ExecuteTimeoutByUser(binary, args, 600, executeUser)
 }
 
-func ExecuteTimeout(binary string, args []string, seconds int) (string, error) {
+func ExecuteTimeout(binary string, args []string, timeout time.Duration) (string, error) {
 	for _, arg := range args {
 		if strings.Contains(arg, "`") {
 			return "", fmt.Errorf("timeout executing: %v,error: %s contain special symbols", binary, arg)
 		}
 	}
-	return ExecuteTimeoutEnv(binary, args, seconds, nil)
+	return ExecuteTimeoutEnv(binary, args, timeout, nil)
 }
 
-func ExecuteTimeoutByUser(binary string, args []string, seconds int, targetUser string) (string, error) {
+func ExecuteTimeoutByUser(binary string, args []string, timeout time.Duration, targetUser string) (string, error) {
 	for _, arg := range args {
 		if strings.Contains(arg, "`") {
 			return "", fmt.Errorf("timeout executing: %v,error: %s contain special symbols", binary, arg)
 		}
 	}
-	return ExecuteTimeoutEnvByUser(binary, args, seconds, nil, targetUser)
+	return ExecuteTimeoutEnvByUser(binary, args, timeout, nil, targetUser)
 }
 
 func CheckIfCmdlineArgvIsValid(args []string) bool {
@@ -91,7 +94,7 @@ func CheckIfCmdlineArgvIsValid(args []string) bool {
 	return true
 }
 
-func ExecuteTimeoutEnv(binary string, args []string, seconds int, env []string) (string, error) {
+func ExecuteTimeoutEnv(binary string, args []string, timeout time.Duration, env []string) (string, error) {
 	var output []byte
 	var err error
 	cmd := exec.Command(binary, args...)
@@ -106,7 +109,7 @@ func ExecuteTimeoutEnv(binary string, args []string, seconds int, env []string) 
 
 	select {
 	case <-done:
-	case <-time.After(time.Duration(seconds) * time.Second):
+	case <-time.After(timeout):
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
@@ -123,9 +126,9 @@ func ExecuteTimeoutEnv(binary string, args []string, seconds int, env []string) 
 	return string(output), nil
 }
 
-func ExecuteCmdSplitStdoutStderr(binary string, arg []string, seconds int) (string, string, error) {
-	if seconds == 0 {
-		seconds = 60
+func ExecuteCmdSplitStdoutStderr(binary string, arg []string, timeout time.Duration) (string, string, error) {
+	if timeout == 0 {
+		timeout = time.Minute
 	}
 	var output []byte
 	var err error
@@ -141,7 +144,7 @@ func ExecuteCmdSplitStdoutStderr(binary string, arg []string, seconds int) (stri
 
 	select {
 	case <-done:
-	case <-time.After(time.Duration(seconds) * time.Second):
+	case <-time.After(timeout):
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
