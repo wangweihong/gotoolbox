@@ -35,3 +35,20 @@ func TestString_ToSetString(t *testing.T) {
 
 	})
 }
+
+func TestSetString(t *testing.T) {
+	Convey("TestString", t, func() {
+		d := sets.NewString()
+		d.Insert("key1", "key2", "myKey")
+
+		So(d.IsPrefixOf("myKeyOld"), ShouldBeTrue)
+		So(d.IsPrefixOf("xxxx"), ShouldBeFalse)
+		So(d.HasPrefix("my"), ShouldBeTrue)
+		So(d.IsPrefixOf("xxxx"), ShouldBeFalse)
+
+		So(d.IsSuffixOf("newmyKey"), ShouldBeTrue)
+		So(d.IsSuffixOf("xxxx"), ShouldBeFalse)
+		So(d.HasSuffix("Key"), ShouldBeTrue)
+		So(d.HasSuffix("xxxx"), ShouldBeFalse)
+	})
+}

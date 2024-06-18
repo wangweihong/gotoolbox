@@ -38,3 +38,11 @@ func TestSdkTime_ParseTime(t *testing.T) {
 	})
 
 }
+
+func TestFormatDuration(t *testing.T) {
+	Convey("format duration", t, func() {
+		So(timeutil.FormatDuration(20*time.Second), ShouldEqual, "20秒")
+		So(timeutil.FormatDuration(225*time.Second), ShouldEqual, "3分45秒")
+		So(timeutil.FormatDuration(3925*time.Second), ShouldEqual, "1小时5分25秒")
+	})
+}

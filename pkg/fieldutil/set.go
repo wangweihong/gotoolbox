@@ -447,3 +447,67 @@ func SetWhenFieldValueTypeMatch(apiObject interface{}, fieldName string, fieldVa
 	fv.Set(reflect.ValueOf(fieldValues))
 	return nil
 }
+
+func SetFieldZeroValueIfCondition(apiObject interface{}, condition func(string) bool) {
+	setZeroValueIfCondition(apiObject, condition)
+}
+
+func setZeroValueIfCondition(v interface{}, condition func(string) bool) {
+	if v == nil {
+		return
+	}
+	vl := reflect.ValueOf(v)
+	if vl.Kind() == reflect.Ptr {
+		vl = reflect.ValueOf(v).Elem()
+	}
+
+	setZeroValue(vl, condition)
+}
+
+func setZeroValue(val reflect.Value, condition func(string) bool) {
+	if val.Kind() == reflect.Ptr {
+		val = val.Elem()
+	}
+
+	if val.Kind() != reflect.Struct {
+		return
+	}
+
+	for i := 0; i < val.NumField(); i++ {
+		field := val.Field(i)
+		fieldName := val.Type().Field(i).Name
+		if condition(fieldName) {
+			if field.CanSet() {
+				field.Set(reflect.Zero(field.Type()))
+			}
+		} else {
+			switch field.Kind() {
+			case reflect.Ptr:
+				if field.IsNil() {
+					continue
+				}
+				if field.Elem().Kind() == reflect.Struct {
+					setZeroValue(field, condition)
+				}
+			case reflect.Array, reflect.Slice:
+				for j := 0; j < field.Len(); j++ {
+					elem := field.Index(j)
+					if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Struct {
+						setZeroValue(elem, condition)
+					} else if elem.Kind() == reflect.Struct {
+						setZeroValue(elem, condition)
+					}
+				}
+			case reflect.Map:
+				for _, key := range field.MapKeys() {
+					elem := field.MapIndex(key)
+					if elem.Kind() == reflect.Ptr && elem.Elem().Kind() == reflect.Struct {
+						setZeroValue(elem, condition)
+					} else if elem.Kind() == reflect.Struct {
+						//FIXME: 如何支持map[string]struct?
+					}
+				}
+			}
+		}
+	}
+}
