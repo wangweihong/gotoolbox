@@ -94,3 +94,22 @@ func ParseTime(data string) (time.Time, error) {
 
 	return time.Time{}, err
 }
+
+func FormatDuration(duration time.Duration) string {
+	seconds := int(duration.Seconds())
+	hours := seconds / 3600
+	minutes := (seconds % 3600) / 60
+	remainingSeconds := seconds % 60
+
+	var result string
+
+	if hours > 0 {
+		result += fmt.Sprintf("%d小时", hours)
+	}
+	if minutes > 0 || hours > 0 {
+		result += fmt.Sprintf("%d分", minutes)
+	}
+	result += fmt.Sprintf("%d秒", remainingSeconds)
+
+	return result
+}
