@@ -78,7 +78,7 @@ func (s String) Match(condition func(string, string) bool, item string) bool {
 	return false
 }
 
-// Match return true if key and item match condition.
+// FindMatch return newSet match condition
 func (s String) FindMatch(condition func(string, string) bool, item string) String {
 	ns := NewString()
 	for k := range s {
@@ -115,6 +115,16 @@ func (s String) Contain(item string) bool {
 	}, item)
 }
 
+// BeContain returns true if key in sets is contain by str.
+func (s String) BeContain(str string) bool {
+	for key := range s {
+		if strings.Contains(str, key) {
+			return true
+		}
+	}
+	return false
+}
+
 func (s String) HasPrefix(item string) bool {
 	return s.Match(func(key string, item string) bool {
 		if strings.HasPrefix(key, item) {
@@ -124,10 +134,28 @@ func (s String) HasPrefix(item string) bool {
 	}, item)
 }
 
+func (s String) HasSuffix(item string) bool {
+	return s.Match(func(key string, item string) bool {
+		if strings.HasSuffix(key, item) {
+			return true
+		}
+		return false
+	}, item)
+}
+
 // sets存在值为item的前缀.
 func (s String) IsPrefixOf(item string) bool {
 	return s.Match(func(key string, item string) bool {
-		if strings.HasSuffix(key, item) {
+		if strings.HasPrefix(item, key) {
+			return true
+		}
+		return false
+	}, item)
+}
+
+func (s String) IsSuffixOf(item string) bool {
+	return s.Match(func(key string, item string) bool {
+		if strings.HasSuffix(item, key) {
 			return true
 		}
 		return false

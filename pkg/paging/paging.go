@@ -2,6 +2,11 @@ package paging
 
 import "math"
 
+type Param struct {
+	PageNumber int
+	PageSize   int
+}
+
 func Index(length int, page, size int) (sIndex, eIndex int) {
 	if length < 0 {
 		length = 0
