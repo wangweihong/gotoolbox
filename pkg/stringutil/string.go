@@ -66,3 +66,17 @@ func TrimAnySuffix(str string, suffixes ...string) string {
 	}
 	return str
 }
+
+func AddSuffixIfNotHas(str, suffix string) string {
+	if !strings.HasSuffix(str, suffix) {
+		str += suffix
+	}
+	return str
+}
+
+func AddPrefixIfNotHas(str, prefix string) string {
+	if !strings.HasPrefix(str, prefix) {
+		str = prefix + str
+	}
+	return str
+}

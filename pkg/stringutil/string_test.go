@@ -36,3 +36,15 @@ func TestPointerToString(t *testing.T) {
 		So(stringutil.PointerToString(sp), ShouldEqual, "a")
 	})
 }
+
+func TestAddIf(t *testing.T) {
+	Convey("AddIf", t, func() {
+		a := "str"
+		So(stringutil.AddPrefixIfNotHas(a, "my"), ShouldEqual, "mystr")
+		So(stringutil.AddSuffixIfNotHas(a, "my"), ShouldEqual, "strmy")
+
+		b := "prefixmysuffix"
+		So(stringutil.AddSuffixIfNotHas(b, "suffix"), ShouldEqual, "prefixmysuffix")
+		So(stringutil.AddPrefixIfNotHas(b, "prefix"), ShouldEqual, "prefixmysuffix")
+	})
+}
