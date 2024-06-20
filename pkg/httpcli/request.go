@@ -136,6 +136,10 @@ func (r *HttpRequest) ConvertRequestWithContext(ctx context.Context) (*http.Requ
 
 	var req *http.Request
 	var err error
+
+	// 1. 如果bodyData的类型为File, 则请求体读取流数据。常用于传输简单二进制流
+	// 2. 如果是表单数据,则请求体转换成表单数据。常用于表单提交, 如需要上传文件,并携带一些文本字段
+	// 3. 其他类型的请求体
 	if r.bodyData != nil && t != nil && t.Name() == "File" {
 		req, err = r.convertStreamBody(ctx)
 		if err != nil {
