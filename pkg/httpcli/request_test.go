@@ -14,6 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/filereceiver"
+	"github.com/wangweihong/gotoolbox/pkg/mathutil"
+
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/def"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli"
@@ -261,6 +264,82 @@ func TestUploadFileFromFormData(t *testing.T) {
 
 			err = rawUpload(f, server.URL)
 			So(err, ShouldBeNil)
+		})
+	})
+}
+
+func TestUploadChunkFileFromFormData(t *testing.T) {
+	fs, _ := os.Stat("./testdata/bigfile")
+	fr, err := filereceiver.NewFileReceiver("./testdata", "generate", fs.Size(), int64(256))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 解析上传的文件
+		r.ParseMultipartForm(10 << 20)
+		file, handler, err := r.FormFile("file")
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error Retrieving the File\"\n")
+			return
+		}
+		defer file.Close()
+		partNumber := r.FormValue("partNumber")
+
+		fmt.Printf("Uploaded File: %+v\n", handler.Filename)
+		fmt.Printf("File Size: %+v\n", handler.Size)
+		fmt.Printf("MIME Header: %+v\n", handler.Header)
+
+		dst := &bytes.Buffer{}
+		if _, err := io.Copy(dst, file); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, "Error saving the file\n")
+			return
+		}
+
+		index, _ := mathutil.ParseInt64(partNumber)
+		if err := fr.Receive(dst.Bytes(), index); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintf(w, err.Error())
+			return
+		}
+
+		fmt.Fprintf(w, "Successfully Uploaded File\n")
+	}))
+	defer server.Close()
+
+	Convey("通过表单分片分别上传文件切片，再封装成文件", t, func() {
+		Convey("httpcli通过FormParam上传文件", func() {
+			So(fs, ShouldNotBeNil)
+			So(err, ShouldBeNil)
+			So(fr, ShouldNotBeNil)
+			f, err := os.Open("./testdata/bigfile")
+			So(err, ShouldBeNil)
+			defer f.Close()
+
+			buffer := make([]byte, 256)
+			partNumber := 0
+			for {
+				bytesRead, err := f.Read(buffer)
+				//
+				//if err != nil && err != io.EOF {
+				//	return err
+				//}
+				if bytesRead == 0 {
+					break
+				}
+
+				chunk := buffer[:bytesRead]
+				_, err = httpcli.NewHttpRequestBuilder().
+					POST().
+					// 表单字段
+					AddFormParam("partNumber", def.NewMultiPart(fmt.Sprintf("%d", partNumber))).
+					// 表单文件
+					AddFormParam("file", def.NewFilePartitionPart("generated", chunk)).
+					WithEndpoint(server.URL).Build().
+					Invoke()
+				partNumber++
+
+				So(err, ShouldBeNil)
+			}
 		})
 	})
 }
