@@ -3,6 +3,7 @@ package httpcli
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -13,6 +14,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/tls/httptls"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/def"
 	"github.com/wangweihong/gotoolbox/pkg/typeutil"
@@ -282,9 +285,43 @@ func (r *HttpRequest) InvokeWithContext(ctx context.Context, opts ...CallOption)
 		Transport: tr,
 		Timeout:   ci.timeout,
 	}
+
+	if ci.TlsEnabled {
+		creds, err := buildCredentials(ci)
+		if err != nil {
+			return nil, err
+		}
+		tr.TLSClientConfig = creds
+	}
+	tr.Proxy = ci.HttpProxy
+
 	resp, err := c.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
 	return NewHttpResponse(r, resp), nil
+}
+
+func buildCredentials(c *callInfo) (*tls.Config, error) {
+	var creds *tls.Config
+	if c.TlsEnabled {
+		var err error
+		if c.SkipTlsVerified {
+			creds = httptls.NewTlsClientSkipVerifiedCredentials()
+		} else {
+			if c.MutualTlsEnabled {
+				// 如果开启双向认证,需要加载服务器
+				creds, err = httptls.NewMutualTlsClientCredentials(
+					[]byte(c.ServerCA),
+					[]byte(c.ClientCertData),
+					[]byte(c.ClientKeyData))
+			} else {
+				creds, err = httptls.NewTlsClientCredentials([]byte(c.ServerCA))
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return creds, nil
 }

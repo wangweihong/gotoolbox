@@ -300,3 +300,30 @@ func TestUploadFormFile(t *testing.T) {
 		So(r.GetBody(), ShouldResemble, "Successfully Uploaded File\n")
 	})
 }
+
+func TestHTTPS(t *testing.T) {
+	// 接收文件
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Successfully Uploaded File\n")
+	}))
+	server.StartTLS()
+	defer server.Close()
+
+	Convey("服务器开启了TLS", t, func() {
+		Convey("不跳过证书检测", func() {
+			_, err := httpcli.NewHttpRequestBuilder().
+				POST().
+				WithEndpoint(server.URL).Build().
+				Invoke(httpcli.CallOptionInsecure())
+			So(err, ShouldNotBeNil)
+		})
+		Convey("跳过证书检测", func() {
+			r, err := httpcli.NewHttpRequestBuilder().
+				POST().
+				WithEndpoint(server.URL).Build().
+				Invoke(httpcli.CallOptionInsecure())
+			So(err, ShouldBeNil)
+			So(r.GetBody(), ShouldResemble, "Successfully Uploaded File\n")
+		})
+	})
+}
