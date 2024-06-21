@@ -56,6 +56,14 @@ func ToString(obj interface{}) string {
 	return string(b)
 }
 
+func Encode(o interface{}) ([]byte, error) {
+	return json.Marshal(o)
+}
+
+func Decode(y []byte, o interface{}) error {
+	return json.Unmarshal(y, o)
+}
+
 func ShouldEncode(params interface{}) string {
 	b, _ := json.Marshal(params)
 	return string(b)
