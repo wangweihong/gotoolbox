@@ -48,3 +48,19 @@ func TestAddIf(t *testing.T) {
 		So(stringutil.AddPrefixIfNotHas(b, "prefix"), ShouldEqual, "prefixmysuffix")
 	})
 }
+
+func TestRemoveBeforeStr(t *testing.T) {
+	Convey("RemoveSub*", t, func() {
+		Convey("RemoveSubBefore", func() {
+			a := "AAAstrBBB"
+			So(stringutil.RemoveSubBefore(a, "str"), ShouldEqual, "strBBB")
+			So(stringutil.RemoveSubBefore("CCC", "str"), ShouldEqual, "CCC")
+		})
+
+		Convey("RemoveSubAndBefore", func() {
+			a := "AAAstrBBB"
+			So(stringutil.RemoveSubAndBefore(a, "str"), ShouldEqual, "BBB")
+			So(stringutil.RemoveSubBefore("CCC", "str"), ShouldEqual, "CCC")
+		})
+	})
+}
