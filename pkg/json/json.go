@@ -33,6 +33,10 @@ func PrintStructObject(data interface{}) {
 	}
 }
 
+var (
+	PrintObject = PrintStructObject
+)
+
 // {"hello": "123"}
 //
 //		-->
@@ -69,8 +73,14 @@ func ShouldEncode(params interface{}) string {
 	return string(b)
 }
 
-func ShouldDecode(data interface{}) map[string]interface{} {
-	b := ShouldEncode(data)
+func ShouldDecode(b []byte) map[string]interface{} {
+	var d map[string]interface{}
+	_ = json.Unmarshal([]byte(b), &d)
+	return d
+}
+
+func ShouldMap(params interface{}) map[string]interface{} {
+	b := ShouldEncode(params)
 	var d map[string]interface{}
 	_ = json.Unmarshal([]byte(b), &d)
 	return d

@@ -20,19 +20,19 @@ type SSHFile struct {
 func (s *SSHFile) Upload(remote, local string) error {
 	localFile, err := os.Open(local)
 	if err != nil {
-		return errors.UpdateStack(err)
+		return errors.WithStack(err)
 	}
 	defer localFile.Close()
 
 	remoteFile, err := s.sftpClient.Create(remote)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to create remote file: %v", err))
+		return errors.WithStack(fmt.Errorf("failed to create remote file: %v", err))
 	}
 	defer remoteFile.Close()
 
 	_, err = io.Copy(remoteFile, localFile)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to copy file: %v", err))
+		return errors.WithStack(fmt.Errorf("failed to copy file: %v", err))
 	}
 	return nil
 }
@@ -41,19 +41,19 @@ func (s *SSHFile) Upload(remote, local string) error {
 func (s *SSHFile) Download(remote, local string) error {
 	remoteFile, err := s.sftpClient.Open(remote)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to create remote file: %v", err))
+		return errors.WithStack(fmt.Errorf("failed to create remote file: %v", err))
 	}
 	defer remoteFile.Close()
 
 	localFile, err := os.Create(local)
 	if err != nil {
-		return errors.UpdateStack(err)
+		return errors.WithStack(err)
 	}
 	defer localFile.Close()
 
 	_, err = io.Copy(localFile, remoteFile)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to copy file: %v", err))
+		return errors.WithStack(fmt.Errorf("failed to copy file: %v", err))
 	}
 	return nil
 }

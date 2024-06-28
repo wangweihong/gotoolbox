@@ -38,7 +38,7 @@ func TestRawMarshalData(t *testing.T) {
 			Data string `json:"data"`
 		}
 		d := &Param{Data: str}
-		mp := json.ShouldDecode(d)
+		mp := json.ShouldMap(d)
 
 		So(json.ShouldEncode(&Param{Data: str}), ShouldEqual, `{"data":"\\\"highlight\\\""}`)
 		So(json.RawMarshal(mp), ShouldEqual, `{"data": "\"highlight\""}`)

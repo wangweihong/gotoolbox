@@ -11,20 +11,20 @@ import (
 )
 
 const (
-	MessageLangCNKey = "MessageCN"
-	MessageLangENKey = "MessageEN"
+	MessageLangCNKey = "CN"
+	MessageLangENKey = "EN"
 )
 
-var unknown = fundamental{
+var unknown = defaultCoder{
 	code: 1,
 	message: map[string]string{
 		MessageLangCNKey: "未知错误码",
-		MessageLangENKey: "UnknownErrorCode",
+		MessageLangENKey: "Unknown Error Code",
 	},
 	httpCode: http.StatusInternalServerError,
 }
 
-var success = fundamental{
+var success = defaultCoder{
 	code: 0,
 	message: map[string]string{
 		MessageLangCNKey: "成功",
@@ -33,37 +33,47 @@ var success = fundamental{
 	httpCode: http.StatusOK,
 }
 
-// fundamental is an error that has a message and a stack, but no caller.
-type fundamental struct {
-	code     int               // 状态码
-	message  map[string]string // 信息
-	httpCode int               // http返回码
+// defaultCoder is an error that has a message and a stack, but no caller.
+type defaultCoder struct {
+	// 错误码
+	code int
+	// 信息
+	message map[string]string
+	// http状态码
+	httpCode int
 }
 
 type Coder interface {
 	// HTTP status that should be used for the associated error code.
 	HTTPStatus() int
 
-	// External (user) facing error message.
+	// External (user) facing error text.
+	String() string
+
+	// All language message
 	Message() map[string]string
 
 	// Code returns the code of the coder
 	Code() int
 }
 
-func (f fundamental) HTTPStatus() int {
+func (f defaultCoder) HTTPStatus() int {
 	return f.httpCode
 }
 
-func (f fundamental) Message() map[string]string {
+func (f defaultCoder) Message() map[string]string {
 	return f.message
 }
 
-func (f fundamental) Code() int {
+func (f defaultCoder) Code() int {
 	return f.code
 }
 
-func (f fundamental) MessageCN() string {
+func (f defaultCoder) String() string {
+	return f.MessageEN()
+}
+
+func (f defaultCoder) MessageCN() string {
 	if f.message != nil {
 		msg := f.message[MessageLangCNKey]
 		return msg
@@ -71,26 +81,12 @@ func (f fundamental) MessageCN() string {
 	return ""
 }
 
-func (f fundamental) MessageEN() string {
+func (f defaultCoder) MessageEN() string {
 	if f.message != nil {
 		msg := f.message[MessageLangENKey]
 		return msg
 	}
 	return ""
-}
-
-// errorlint:ignore
-// IsCode reports whether any error in err's chain contains the given error code.
-func IsCode(err error, code int) bool {
-	if err != nil {
-		if v, ok := err.(*WithStack); ok {
-			if v.Code() == code {
-				return true
-			}
-		}
-	}
-
-	return false
 }
 
 // codes contains a map of error codes to metadata.
@@ -167,8 +163,8 @@ func ParseCoder(err error) Coder {
 		return nil
 	}
 
-	if v, ok := err.(*WithStack); ok {
-		if coder, ok := codes[v.Code()]; ok {
+	if v, ok := err.(*withCode); ok {
+		if coder, ok := codes[v.code]; ok {
 			return coder
 		}
 	}
@@ -184,40 +180,58 @@ func Success() Coder {
 	return success
 }
 
-// errorlint:ignore
-func MessageEn(err error) string {
-	if err == nil {
-		return ""
-	}
-	if st, ok := err.(Coder); ok {
-		return st.Message()[MessageLangENKey]
-	}
-	return "unknown error message"
-}
-
-// errorlint:ignore
-func MessageCN(err error) string {
-	if err == nil {
-		return ""
-	}
-	if st, ok := err.(Coder); ok {
-		return st.Message()[MessageLangCNKey]
-	}
-	return "未知错误信息"
-}
-
 func Code(err error) int {
-	if err == nil {
-		return success.code
+	if err != nil {
+		if v, ok := err.(*withCode); ok {
+			return v.code
+		}
+		return unknown.code
 	}
-	if st, ok := err.(Coder); ok {
-		return st.Code()
+	return success.code
+}
+
+// errorlint:ignore
+// IsCode reports whether err (no chain) has the given error code.
+func IsCode(err error, code int) bool {
+	if err != nil {
+		if v, ok := err.(*withCode); ok {
+			if v.code == code {
+				return true
+			}
+		}
 	}
-	return unknown.code
+
+	return false
+}
+
+func IsSuccess(err error) bool {
+	return IsCode(err, 0)
+}
+
+func IsSuccessCode(code int) bool {
+	return code == 0
+}
+
+// HasCode reports whether any error in err's chain contains the given error code.
+func HasCode(err error, code int) bool {
+	if err != nil {
+		if v, ok := err.(*withCode); ok {
+			if v.code == code {
+				return true
+			}
+
+			// 	逐级向上去获取withCode错误栈中,直到栈中包含某个错误.
+			if v.cause != nil {
+				return IsCode(v.cause, code)
+			}
+		}
+	}
+
+	return false
 }
 
 func NewCoder(code int, httpCode int, message map[string]string) Coder {
-	return fundamental{
+	return defaultCoder{
 		code:     code,
 		message:  message,
 		httpCode: httpCode,
