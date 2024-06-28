@@ -3,6 +3,7 @@ package httpcli
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -13,6 +14,8 @@ import (
 	"reflect"
 	"strings"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/tls/httptls"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/def"
 	"github.com/wangweihong/gotoolbox/pkg/typeutil"
@@ -136,6 +139,10 @@ func (r *HttpRequest) ConvertRequestWithContext(ctx context.Context) (*http.Requ
 
 	var req *http.Request
 	var err error
+
+	// 1. 如果bodyData的类型为File, 则请求体读取流数据。常用于传输简单二进制流
+	// 2. 如果是表单数据,则请求体转换成表单数据。常用于表单提交, 如需要上传文件,并携带一些文本字段
+	// 3. 其他类型的请求体
 	if r.bodyData != nil && t != nil && t.Name() == "File" {
 		req, err = r.convertStreamBody(ctx)
 		if err != nil {
@@ -278,9 +285,43 @@ func (r *HttpRequest) InvokeWithContext(ctx context.Context, opts ...CallOption)
 		Transport: tr,
 		Timeout:   ci.timeout,
 	}
+
+	if ci.TlsEnabled {
+		creds, err := buildCredentials(ci)
+		if err != nil {
+			return nil, err
+		}
+		tr.TLSClientConfig = creds
+	}
+	tr.Proxy = ci.HttpProxy
+
 	resp, err := c.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}
 	return NewHttpResponse(r, resp), nil
+}
+
+func buildCredentials(c *callInfo) (*tls.Config, error) {
+	var creds *tls.Config
+	if c.TlsEnabled {
+		var err error
+		if c.SkipTlsVerified {
+			creds = httptls.NewTlsClientSkipVerifiedCredentials()
+		} else {
+			if c.MutualTlsEnabled {
+				// 如果开启双向认证,需要加载服务器
+				creds, err = httptls.NewMutualTlsClientCredentials(
+					[]byte(c.ServerCA),
+					[]byte(c.ClientCertData),
+					[]byte(c.ClientKeyData))
+			} else {
+				creds, err = httptls.NewTlsClientCredentials([]byte(c.ServerCA))
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	return creds, nil
 }

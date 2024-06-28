@@ -36,3 +36,31 @@ func TestPointerToString(t *testing.T) {
 		So(stringutil.PointerToString(sp), ShouldEqual, "a")
 	})
 }
+
+func TestAddIf(t *testing.T) {
+	Convey("AddIf", t, func() {
+		a := "str"
+		So(stringutil.AddPrefixIfNotHas(a, "my"), ShouldEqual, "mystr")
+		So(stringutil.AddSuffixIfNotHas(a, "my"), ShouldEqual, "strmy")
+
+		b := "prefixmysuffix"
+		So(stringutil.AddSuffixIfNotHas(b, "suffix"), ShouldEqual, "prefixmysuffix")
+		So(stringutil.AddPrefixIfNotHas(b, "prefix"), ShouldEqual, "prefixmysuffix")
+	})
+}
+
+func TestRemoveBeforeStr(t *testing.T) {
+	Convey("RemoveSub*", t, func() {
+		Convey("RemoveSubBefore", func() {
+			a := "AAAstrBBB"
+			So(stringutil.RemoveSubBefore(a, "str"), ShouldEqual, "strBBB")
+			So(stringutil.RemoveSubBefore("CCC", "str"), ShouldEqual, "CCC")
+		})
+
+		Convey("RemoveSubAndBefore", func() {
+			a := "AAAstrBBB"
+			So(stringutil.RemoveSubAndBefore(a, "str"), ShouldEqual, "BBB")
+			So(stringutil.RemoveSubBefore("CCC", "str"), ShouldEqual, "CCC")
+		})
+	})
+}

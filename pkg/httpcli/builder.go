@@ -2,6 +2,7 @@ package httpcli
 
 import (
 	"encoding/base64"
+	"os"
 	"reflect"
 	"strings"
 	"time"
@@ -171,15 +172,31 @@ func (builder *HttpRequestBuilder) WithBody(kind string, body interface{}) *Http
 		for i := 0; i < fieldNum; i++ {
 			jsonTag := t.Field(i).Tag.Get("json")
 			if jsonTag != "" {
-				if v.FieldByName(t.Field(i).Name).IsNil() && strings.Contains(jsonTag, "omitempty") {
+				if v.FieldByName(t.Field(i).Name).IsZero() && strings.Contains(jsonTag, "omitempty") {
 					continue
 				}
-				builder.AddFormParam(
-					strings.Split(jsonTag, ",")[0],
-					v.FieldByName(t.Field(i).Name).Interface().(def.FormData),
-				)
+
+				switch d := v.FieldByName(t.Field(i).Name).Interface().(type) {
+				case def.FormData:
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+				case *os.File:
+					fd := def.NewFilePart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+				default:
+					md := def.NewMultiPart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+				}
 			} else {
-				builder.AddFormParam(t.Field(i).Name, v.FieldByName(t.Field(i).Name).Interface().(def.FormData))
+				switch d := v.FieldByName(t.Field(i).Name).Interface().(type) {
+				case def.FormData:
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+				case *os.File:
+					fd := def.NewFilePart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+				default:
+					md := def.NewMultiPart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+				}
 			}
 		}
 	} else {

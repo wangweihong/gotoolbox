@@ -1,6 +1,7 @@
 package def
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -87,4 +88,29 @@ func (m MultiPart) Write(w *multipart.Writer, name string) error {
 
 type FormData interface {
 	Write(*multipart.Writer, string) error
+}
+
+// FilePartitionPart 用于预先读取大文件进行分片，通过表单上传
+type FilePartitionPart struct {
+	Content  []byte
+	FileName string
+}
+
+func NewFilePartitionPart(fileName string, content []byte) *FilePartitionPart {
+	return &FilePartitionPart{
+		FileName: fileName,
+		Content:  content,
+	}
+}
+
+func (m FilePartitionPart) Write(w *multipart.Writer, name string) error {
+	writer, err := w.CreateFormFile(name, m.FileName)
+	if err != nil {
+		return err
+	}
+
+	if _, err := io.Copy(writer, bytes.NewReader(m.Content)); err != nil {
+		return err
+	}
+	return err
 }

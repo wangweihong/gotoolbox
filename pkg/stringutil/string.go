@@ -49,6 +49,7 @@ func PrintUnescape(p string) {
 	fmt.Println(fmt.Sprintf("%#v", p))
 }
 
+// TrimAnySuffix 字符串移除指定前缀(如果有的的话)
 func TrimAnyPrefix(str string, prefixes ...string) string {
 	if str != "" {
 		for _, p := range prefixes {
@@ -58,6 +59,7 @@ func TrimAnyPrefix(str string, prefixes ...string) string {
 	return str
 }
 
+// TrimAnySuffix 字符串移除指定后缀(如果有的的话)
 func TrimAnySuffix(str string, suffixes ...string) string {
 	if str != "" {
 		for _, p := range suffixes {
@@ -65,4 +67,40 @@ func TrimAnySuffix(str string, suffixes ...string) string {
 		}
 	}
 	return str
+}
+
+// AddSuffixIfNotHas 如果字符串没有指定后缀则添加
+func AddSuffixIfNotHas(str, suffix string) string {
+	if !strings.HasSuffix(str, suffix) {
+		str += suffix
+	}
+	return str
+}
+
+// AddPrefixIfNotHas 如果字符串没有指定前缀则添加
+func AddPrefixIfNotHas(str, prefix string) string {
+	if !strings.HasPrefix(str, prefix) {
+		str = prefix + str
+	}
+	return str
+}
+
+// RemoveSubBefore 删除子字符串前的所有字符(不包括子字符串)
+func RemoveSubBefore(s, str string) string {
+	index := strings.Index(s, str)
+	if index == -1 {
+		// If str is not found, return the original string
+		return s
+	}
+	return s[index:]
+}
+
+// RemoveSubBefore 删除子字符串以及之前所有字符
+func RemoveSubAndBefore(s, str string) string {
+	index := strings.Index(s, str)
+	if index == -1 {
+		// If str is not found, return the original string
+		return s
+	}
+	return s[index+len(str):]
 }
