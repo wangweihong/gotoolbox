@@ -2,7 +2,6 @@ package httpcli
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -65,15 +64,11 @@ func (c *Client) Invoke(
 	opts ...CallOption,
 ) (*HttpResponse, error) {
 
-	var callerMsg string
 	var err error
 	var rawResp *HttpResponse
 
 	if logEnabled() {
-		file, line, fn := callerutil.CallerDepth(3)
-		callerMsg = fmt.Sprintf("%s:%s:%d", file, fn, line)
-
-		caller := map[string]interface{}{"caller": callerMsg}
+		caller := map[string]interface{}{"caller": callerutil.CallersDepth(1, 3).List()}
 		debugLog(ctx, caller, "Client Invoke Called")
 		defer func() {
 			caller["err"] = errors.Message(err)
@@ -102,12 +97,12 @@ func (c *Client) Invoke(
 			getChainUnaryInvoker(chainInterceptors, 0, invokeLogWrapper),
 			opts...)
 
-		return rawResp, errors.UpdateStack(err)
+		return rawResp, errors.WithStack(err)
 	}
 
 	rawResp, err = invokeLogWrapper(ctx, req, arg, reply, c, opts...)
 
-	return rawResp, errors.UpdateStack(err)
+	return rawResp, errors.WithStack(err)
 }
 
 func getChainUnaryInvoker(interceptors []Interceptor, curr int, finalInvoker Invoker) Invoker {
@@ -144,7 +139,7 @@ func invokeLogWrapper(
 	debugCore(ctx, startTime, req, httpResp, arg, reply, err)
 	logInfoIf(ctx, "Core end")
 
-	return httpResp, errors.UpdateStack(err)
+	return httpResp, errors.WithStack(err)
 }
 
 // nolint: funlen,gocognit
@@ -172,22 +167,22 @@ func invoke(
 	// 转换成原生http请求
 	httpReq, err := req.ConvertRequestWithContext(ctx)
 	if err != nil {
-		return nil, errors.UpdateStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	// 请求前处理. 如一些场景需要对请求参数进行签名
 	if err := c.preRequestProcess(httpReq, ci); err != nil {
-		return nil, errors.UpdateStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	resp, err := c.conn.Do(httpReq)
 	if err != nil {
-		return nil, errors.UpdateStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	// 请求后处理
 	if err := c.postRequestProcess(resp, ci); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return NewHttpResponse(req, resp), nil

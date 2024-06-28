@@ -1,8 +1,14 @@
 package sliceutil
 
-import "sort"
+import (
+	"sort"
+)
 
 type IntSlice []int
+
+func NewIntSlice(e ...int) IntSlice {
+	return e
+}
 
 func (m IntSlice) DeepCopy() IntSlice {
 	o := make([]int, 0, len(m))
@@ -180,4 +186,33 @@ func moveElementToFront(arr []int, i int) []int {
 	copy(arr[1:i+1], arr[:i])
 	arr[0] = temp
 	return arr
+}
+
+// MergeDifferentElementsFromEnd m/b从最后一个元素开始比较，直到找到和b不同的元素的索引。m中不同的部分和b合并
+func (m IntSlice) MergeDifferentElementsFromEnd(b IntSlice) IntSlice {
+	lenM, lenB := len(m), len(b)
+	var offset int
+
+	for {
+		iM, iB := lenM-offset-1, lenB-offset-1
+
+		if iM < 0 || iB < 0 {
+			break
+		}
+
+		if m[iM] != b[iB] {
+			break
+		}
+		offset += 1
+	}
+
+	if offset == lenM || offset == lenB {
+		if lenM > lenB {
+			return append(m[:lenM-lenB], b...)
+		}
+		return b
+	}
+
+	result := append(m[0:lenM-offset], b...)
+	return result
 }

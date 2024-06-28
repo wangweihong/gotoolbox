@@ -33,6 +33,10 @@ func PrintStructObject(data interface{}) {
 	}
 }
 
+var (
+	PrintObject = PrintStructObject
+)
+
 // {"hello": "123"}
 //
 //		-->

@@ -30,7 +30,7 @@ func (i interceptor) Intercept(ctx context.Context, req *HttpRequest, arg,
 	debugCore(ctx, startTime, req, rawResp, arg, reply, err)
 	logInfoIf(ctx, fmt.Sprintf("Interceptor '%v' Invoked end.", i.Name()))
 
-	return rawResp, errors.UpdateStack(err)
+	return rawResp, errors.WithStack(err)
 
 }
 

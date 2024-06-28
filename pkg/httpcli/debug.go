@@ -71,8 +71,7 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 
 func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply interface{}, err error) {
 	if logEnabled() {
-		file, line, fn := callerutil.CallerDepth(4)
-		callerMsg := fmt.Sprintf("%s:%s:%d", file, fn, line)
+		callerMsg := callerutil.Stacks(1)
 
 		fields := callEntry(start, req, rawResp, arg, reply, err)
 		fields["caller"] = callerMsg
