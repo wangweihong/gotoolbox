@@ -6,9 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/callerutil"
+
 	"github.com/wangweihong/gotoolbox/pkg/json"
 
-	"github.com/wangweihong/gotoolbox/pkg/callerutil"
 	"github.com/wangweihong/gotoolbox/pkg/maputil"
 )
 
@@ -56,6 +57,7 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 		if logHugeEnabled() {
 			fields["resp_body"] = rawResp.GetBody()
 			fields["resp_headers"] = json.ToString(rawResp.GetHeaders())
+			fields["caller"] = callerutil.CallersDepth(32, 4).List()
 		}
 	}
 
@@ -71,11 +73,7 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 
 func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply interface{}, err error) {
 	if logEnabled() {
-		callerMsg := callerutil.Stacks(1)
-
 		fields := callEntry(start, req, rawResp, arg, reply, err)
-		fields["caller"] = callerMsg
-
 		simpleCallInfo := fmt.Sprintf(
 			"%v - [%s] %v %s  %s",
 			fields.Get("resp_status"),

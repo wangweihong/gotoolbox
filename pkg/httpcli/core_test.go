@@ -2,12 +2,13 @@ package httpcli_test
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/log"
 
@@ -48,7 +49,7 @@ var (
 		if err != nil {
 			return resp, err
 		}
-		return resp, fmt.Errorf("intercetpor error")
+		return resp, errors.New("intercetpor error")
 	})
 )
 
@@ -114,6 +115,16 @@ func TestClient_Interceptor(t *testing.T) {
 			So(err, ShouldNotBeNil)
 			So(resp, ShouldNotBeNil)
 			So(resp.Response.StatusCode, ShouldEqual, 200)
+			// FIXME:是否考虑移除各个中间件的log信息
+			//fmt.Printf("%+v\n", err)
+			//	github.com/wangweihong/gotoolbox/pkg/httpcli_test.glob..func3
+			//C:/goprogram/src/github.com/wangweihong/gotoolbox/pkg/httpcli/core_test.go:53
+			//	github.com/wangweihong/gotoolbox/pkg/httpcli.interceptor.Intercept
+			//C:/goprogram/src/github.com/wangweihong/gotoolbox/pkg/httpcli/interceptor.go:28
+			//	github.com/wangweihong/gotoolbox/pkg/httpcli.(*Client).Invoke
+			//C:/goprogram/src/github.com/wangweihong/gotoolbox/pkg/httpcli/core.go:91
+			//	github.com/wangweihong/gotoolbox/pkg/httpcli_test.TestClient_Interceptor.func2.2
+			//C:/goprogram/src/github.com/wangweihong/gotoolbox/pkg/httpcli/core_test.go:115
 		})
 
 		SkipConvey("无拦截器", func() {

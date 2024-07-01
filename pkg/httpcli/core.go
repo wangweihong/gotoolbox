@@ -68,11 +68,11 @@ func (c *Client) Invoke(
 	var rawResp *HttpResponse
 
 	if logEnabled() {
-		caller := map[string]interface{}{"caller": callerutil.CallersDepth(1, 3).List()}
-		debugLog(ctx, caller, "Client Invoke Called")
+		caller := map[string]interface{}{"caller": callerutil.CallersDepth(20, 3).List()}
+		//debugLog(ctx, caller, "Client Invoke Called")
 		defer func() {
 			caller["err"] = errors.Message(err)
-			debugLog(ctx, caller, "Client Invoke Ended")
+			//	debugLog(ctx, caller, "Client Invoke Ended")
 		}()
 	}
 
@@ -191,7 +191,7 @@ func invoke(
 func (c *Client) preRequestProcess(req *http.Request, info *callInfo) error {
 	if info != nil && info.httpRequestProcess != nil {
 		if _, err := info.httpRequestProcess(req); err != nil {
-			return err
+			return errors.Wrap(err, "process request before invoke fail")
 		}
 	}
 
