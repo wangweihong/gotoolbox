@@ -3,10 +3,10 @@ package httpcli
 import (
 	"bytes"
 	"encoding/xml"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/decode"
 	"github.com/wangweihong/gotoolbox/pkg/json"
 )
@@ -64,7 +64,7 @@ func (r *HttpResponse) Decode(resp interface{}) error {
 
 	data := r.GetBody()
 	if data == "" {
-		return fmt.Errorf("body data is empty")
+		return errors.New("body data is empty")
 	}
 	byteData := []byte(data)
 	mm := decode.NewMarshalMapping()

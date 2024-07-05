@@ -2,6 +2,9 @@ package executil
 
 import (
 	"bytes"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"fmt"
 	"os/exec"
 	"strings"
@@ -19,7 +22,7 @@ func Execute(binary string, args []string) (string, error) {
 func ExecuteTimeout(binary string, args []string, timeout time.Duration) (string, error) {
 	for _, arg := range args {
 		if strings.Contains(arg, "`") {
-			return "", fmt.Errorf("timeout executing: %v,error: %s contain special symbols", binary, arg)
+			return "", errors.Errorf("timeout executing: %v,error: %s contain special symbols", binary, arg)
 		}
 	}
 	return ExecuteTimeoutEnv(binary, args, timeout, nil)
@@ -53,12 +56,12 @@ func ExecuteTimeoutEnv(binary string, args []string, timeout time.Duration, env 
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
-		return "", fmt.Errorf("timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", errors.Errorf("timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
 	}
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "no child processes") {
-			return string(output), fmt.Errorf("failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+			return string(output), errors.Errorf("failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
 		} else {
 			fmt.Printf("execute: %v %v, output %v, error %v", binary, args, string(output), err)
 		}
@@ -88,12 +91,12 @@ func ExecuteCmdSplitStdoutStderr(binary string, arg []string, timeout time.Durat
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
-		return "", "", fmt.Errorf("timeout executing: %v, arg %v,error %v", binary, arg, err)
+		return "", "", errors.Errorf("timeout executing: %v, arg %v,error %v", binary, arg, err)
 	}
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "no child processes") {
-			return string(output), stderr.String(), fmt.Errorf("failed to execute: %v, arg %v, error %v", binary, arg, err)
+			return string(output), stderr.String(), errors.Errorf("failed to execute: %v, arg %v, error %v", binary, arg, err)
 		}
 	}
 

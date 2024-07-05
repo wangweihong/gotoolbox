@@ -1,8 +1,9 @@
 package log
 
 import (
-	"fmt"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/json"
 
@@ -66,7 +67,7 @@ func (o *Options) Validate() []error {
 
 	format := strings.ToLower(o.Format)
 	if format != consoleFormat && format != jsonFormat {
-		errs = append(errs, fmt.Errorf("not a valid log format: %q", o.Format))
+		errs = append(errs, errors.Errorf("not a valid log format: %q", o.Format))
 	}
 
 	return errs

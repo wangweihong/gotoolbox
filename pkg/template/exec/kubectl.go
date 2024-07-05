@@ -27,7 +27,7 @@ type KustomizedTemplateFileParser struct {
 
 func (p *KustomizedTemplateFileParser) Run() error {
 	if p.Error() != nil {
-		return fmt.Errorf("templateDirProc %v meet error before run:%v ", p.TemplateName, p.Error())
+		return errors.New("templateDirProc %v meet error before run:%v ", p.TemplateName, p.Error())
 	}
 
 	// ignore non k8s resource file
@@ -37,7 +37,7 @@ func (p *KustomizedTemplateFileParser) Run() error {
 	kustomizePath := filepath.Join(filepath.Dir(p.FilePath), "kustomization.yaml")
 	if _, err := os.Stat(kustomizePath); err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("stat kustomizePath:%v fail:%v", kustomizePath, err)
+			return errors.New("stat kustomizePath:%v fail:%v", kustomizePath, err)
 		}
 		args := []string{"--kubeconfig", p.KubeconfigPath, "apply", "-f", p.FilePath}
 		if _, _, err := executil.ExecuteCmdSplitStdoutStderr(p.KubectlPath, args, 0); err != nil {

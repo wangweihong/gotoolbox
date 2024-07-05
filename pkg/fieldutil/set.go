@@ -3,16 +3,17 @@ package fieldutil
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 // 当apiObject存在一个字段包含tagName:tagValues、且类型和internalObject一致,则设置该字段值为internalObject
 func SetWhenTagValueMatch(apiObject interface{}, internalObject interface{}, tagName, tagValue string) error {
 	if tagName == "" || tagValue == "" {
-		return fmt.Errorf("tagName and tagValue is empty")
+		return errors.New("tagName and tagValue is empty")
 	}
 
 	rv := reflect.ValueOf(apiObject)
@@ -23,11 +24,11 @@ func SetWhenTagValueMatch(apiObject interface{}, internalObject interface{}, tag
 	}
 
 	if rv.Kind() != reflect.Struct {
-		return fmt.Errorf("apiObject not struct")
+		return errors.New("apiObject not struct")
 	}
 
 	if !rv.IsValid() {
-		return fmt.Errorf("apiObject not vaild")
+		return errors.New("apiObject not vaild")
 	}
 
 	for i := 0; i < rt.NumField(); i++ {
@@ -40,7 +41,7 @@ func SetWhenTagValueMatch(apiObject interface{}, internalObject interface{}, tag
 			}
 
 			if rt.Field(i).Type != reflect.TypeOf(internalObject) {
-				return fmt.Errorf("apiObject field with %v:\"%v\" type (%v) not equal to internalObject （%v）",
+				return errors.Errorf("apiObject field with %v:\"%v\" type (%v) not equal to internalObject （%v）",
 					tagName, tagValue, rt.Field(i).Type, reflect.TypeOf(internalObject))
 			}
 
@@ -50,16 +51,16 @@ func SetWhenTagValueMatch(apiObject interface{}, internalObject interface{}, tag
 			return nil
 		}
 	}
-	return fmt.Errorf("missing field with tag json:data")
+	return errors.New("missing field with tag json:data")
 }
 
 func CheckIfStructFieldMatch(apiObject interface{}, tagName, tagValuePoint string, compareValue interface{}) error {
 	if tagValuePoint == "" || strings.TrimSpace(tagValuePoint) == "." {
-		return fmt.Errorf("invalid tagValuePoint")
+		return errors.New("invalid tagValuePoint")
 	}
 
 	if apiObject == nil {
-		return fmt.Errorf("apiObject is nil")
+		return errors.New("apiObject is nil")
 	}
 
 	valuePoints := strings.Split(tagValuePoint, ".")
@@ -72,11 +73,11 @@ func CheckIfStructFieldMatch(apiObject interface{}, tagName, tagValuePoint strin
 	}
 
 	if rv.Kind() != reflect.Struct {
-		return fmt.Errorf("apiObject not pointer")
+		return errors.New("apiObject not pointer")
 	}
 
 	if !rv.IsValid() {
-		return fmt.Errorf("apiObject not vaild")
+		return errors.New("apiObject not vaild")
 	}
 
 	for i := 0; i < rt.NumField(); i++ {
@@ -84,7 +85,7 @@ func CheckIfStructFieldMatch(apiObject interface{}, tagName, tagValuePoint strin
 			// 查看valuepoint是否还有下一级
 			if len(valuePoints) > 1 {
 				if rv.Field(i).Kind() != reflect.Struct {
-					return fmt.Errorf("field kind should be struct when valuepoint has multple elem")
+					return errors.New("field kind should be struct when valuepoint has multple elem")
 				}
 
 				return CheckIfStructFieldMatch(
@@ -96,7 +97,7 @@ func CheckIfStructFieldMatch(apiObject interface{}, tagName, tagValuePoint strin
 			}
 
 			if rt.Field(i).Type != reflect.TypeOf(compareValue) {
-				return fmt.Errorf(
+				return errors.Errorf(
 					"value type not match fieldValue, value type (%v),field type(%v)",
 					rt.Field(i).Type,
 					reflect.TypeOf(compareValue),
@@ -106,23 +107,23 @@ func CheckIfStructFieldMatch(apiObject interface{}, tagName, tagValuePoint strin
 			// will this work?
 			// https://github.com/golang/go/issues/9504
 			if rv.Field(i).Interface() != reflect.ValueOf(compareValue).Interface() {
-				return fmt.Errorf("value not match")
+				return errors.New("value not match")
 			}
 
 			return nil
 		}
 	}
-	return fmt.Errorf("cannot find field with tag %v:%v in object", tagName, valuePoints[0])
+	return errors.Errorf("cannot find field with tag %v:%v in object", tagName, valuePoints[0])
 }
 
 // 检测json Marshal bytes字节流中是否指定的字段如,而且值为compareValue。 如 china.shenzhen.baoan.cars[0].numberprefix是否等于"粤B"
 func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, compareValue interface{}) error {
 	if tagValuePoint == "" || strings.TrimSpace(tagValuePoint) == "." {
-		return fmt.Errorf("invalid tagValuePoint")
+		return errors.New("invalid tagValuePoint")
 	}
 
 	if apiObjectBytes == nil {
-		return fmt.Errorf("apiObject is nil")
+		return errors.New("apiObject is nil")
 	}
 
 	valuePoints := strings.Split(tagValuePoint, ".")
@@ -155,7 +156,7 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 
 	fieldValue, ok := obj[mapKey]
 	if !ok {
-		return fmt.Errorf("field not exist:%v", mapKey)
+		return errors.Errorf("field not exist:%v", mapKey)
 	}
 	fvt := reflect.TypeOf(fieldValue)
 	fvv := reflect.ValueOf(fieldValue)
@@ -168,7 +169,7 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 		if sliceIndex != -1 {
 			//设置为指定元素值
 			if sliceIndex >= fvv.Len() {
-				return fmt.Errorf("invalid slice index [%v], out of slice range", sliceIndex)
+				return errors.Errorf("invalid slice index [%v], out of slice range", sliceIndex)
 			}
 			indexValue := fvv.Index(sliceIndex).Interface()
 			fieldValue = indexValue
@@ -184,34 +185,34 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 			}
 
 			if reflect.TypeOf(fieldValue) != reflect.TypeOf(compareValue) {
-				return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
+				return errors.Errorf("type not match, source(type:%v), target(type:%v)",
 					reflect.TypeOf(fieldValue), reflect.TypeOf(compareValue))
 			}
 
 			if fieldValue != compareValue {
-				return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
+				return errors.Errorf("value not match, source(value:%v), target(value:%v)",
 					fieldValue, compareValue)
 			}
 			return nil
 		} else {
 			// 数组, 如果是数组就不能再走下一层
 			if len(valuePoints) != 1 {
-				return fmt.Errorf("data.slice[0].key or data.slice is good. but data.slice.key is not")
+				return errors.New("data.slice[0].key or data.slice is good. but data.slice.key is not")
 			}
 
 			cv := reflect.ValueOf(compareValue)
 			if cv.Kind() != reflect.Slice {
-				return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
+				return errors.Errorf("type not match, source(type:%v), target(type:%v)",
 					reflect.TypeOf(fieldValue), reflect.TypeOf(compareValue))
 			}
 
 			if cv.Len() != fvv.Len() {
-				return fmt.Errorf("compare field slice len not match")
+				return errors.New("compare field slice len not match")
 			}
 
 			for i := 0; i < cv.Len(); i++ {
 				if cv.Index(i).Interface() != fvv.Index(i).Interface() {
-					return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
+					return errors.Errorf("value not match, source(value:%v), target(value:%v)",
 						cv.Index(i), fvv.Index(i))
 				}
 			}
@@ -231,12 +232,12 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 		}
 
 		if reflect.TypeOf(fieldValue) != reflect.TypeOf(compareValue) {
-			return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
+			return errors.Errorf("type not match, source(type:%v), target(type:%v)",
 				reflect.TypeOf(fieldValue), reflect.TypeOf(compareValue))
 		}
 
 		if fieldValue != compareValue {
-			return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
+			return errors.Errorf("value not match, source(value:%v), target(value:%v)",
 				fieldValue, compareValue)
 		}
 
@@ -245,7 +246,7 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 	default:
 		// 除了map和slice其他类型不会有下一层
 		if len(valuePoints) != 1 {
-			return fmt.Errorf("non-slice or non-map should has no child point")
+			return errors.New("non-slice or non-map should has no child point")
 		}
 
 		if fvt == reflect.TypeOf(json.Number("")) {
@@ -257,7 +258,7 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 					return err
 				}
 				if jnInt64 != reflect.ValueOf(compareValue).Int() {
-					return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
+					return errors.Errorf("value not match, source(value:%v), target(value:%v)",
 						fieldValue, compareValue)
 				}
 
@@ -268,23 +269,23 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 					return err
 				}
 				if jnFloat != reflect.ValueOf(compareValue).Float() {
-					return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
+					return errors.Errorf("value not match, source(value:%v), target(value:%v)",
 						fieldValue, compareValue)
 				}
 			default:
 				if fvt != reflect.TypeOf(compareValue) {
-					return fmt.Errorf("type not match when type is json number, source(type:%v), target(type:%v)",
+					return errors.Errorf("type not match when type is json number, source(type:%v), target(type:%v)",
 						"json.Number", reflect.TypeOf(compareValue))
 				}
 			}
 		} else {
 			if fvt != reflect.TypeOf(compareValue) {
-				return fmt.Errorf("type not match, source(type:%v), target(type:%v)",
+				return errors.Errorf("type not match, source(type:%v), target(type:%v)",
 					fvt, reflect.TypeOf(compareValue))
 			}
 
 			if fieldValue != compareValue {
-				return fmt.Errorf("value not match, source(value:%v), target(value:%v)",
+				return errors.Errorf("value not match, source(value:%v), target(value:%v)",
 					fieldValue, compareValue)
 			}
 		}
@@ -294,7 +295,7 @@ func CheckIfBytesStructFieldMatch(apiObjectBytes []byte, tagValuePoint string, c
 
 func GetStructFieldValue(object interface{}, tagValuePoint string) (interface{}, error) {
 	if object == nil {
-		return nil, fmt.Errorf("object is nil")
+		return nil, errors.New("object is nil")
 	}
 
 	b, err := json.Marshal(object)
@@ -307,11 +308,11 @@ func GetStructFieldValue(object interface{}, tagValuePoint string) (interface{},
 // 提取json Marshal bytes字节流中是否指定的字段值 如 china.shenzhen.baoan.cars[0].numberprefix
 func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface{}, error) {
 	if tagValuePoint == "" || strings.TrimSpace(tagValuePoint) == "." {
-		return nil, fmt.Errorf("invalid tagValuePoint")
+		return nil, errors.New("invalid tagValuePoint")
 	}
 
 	if apiObjectBytes == nil {
-		return nil, fmt.Errorf("apiObject is nil")
+		return nil, errors.New("apiObject is nil")
 	}
 
 	valuePoints := strings.Split(tagValuePoint, ".")
@@ -344,7 +345,7 @@ func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface
 
 	fieldValue, ok := obj[mapKey]
 	if !ok {
-		return nil, fmt.Errorf("field not exist:%v", mapKey)
+		return nil, errors.Errorf("field not exist:%v", mapKey)
 	}
 	fvt := reflect.TypeOf(fieldValue)
 	fvv := reflect.ValueOf(fieldValue)
@@ -357,7 +358,7 @@ func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface
 		if sliceIndex != -1 {
 			//设置为指定元素值
 			if sliceIndex >= fvv.Len() {
-				return nil, fmt.Errorf("invalid slice index [%v], out of slice range", sliceIndex)
+				return nil, errors.Errorf("invalid slice index [%v], out of slice range", sliceIndex)
 			}
 			indexValue := fvv.Index(sliceIndex).Interface()
 			fieldValue = indexValue
@@ -366,7 +367,7 @@ func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface
 				//没有遍历完，继续遍历
 				b, err := json.Marshal(fieldValue)
 				if err != nil {
-					return nil, err
+					return nil, errors.WithStack(err)
 				}
 
 				return GetBytesStructField(b, strings.Join(valuePoints[1:], "."))
@@ -376,7 +377,7 @@ func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface
 		} else {
 			// 数组, 如果是数组就不能再走下一层
 			if len(valuePoints) != 1 {
-				return nil, fmt.Errorf("data.slice[0].key or data.slice is good. but data.slice.key is not")
+				return nil, errors.Errorf("data.slice[0].key or data.slice is good. but data.slice.key is not")
 			}
 
 			return fvv.Interface(), nil
@@ -399,7 +400,7 @@ func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface
 	default:
 		// 除了map和slice其他类型不会有下一层
 		if len(valuePoints) != 1 {
-			return nil, fmt.Errorf("non-slice or non-map should has no child point")
+			return nil, errors.New("non-slice or non-map should has no child point")
 		}
 	}
 	return fvv.Interface(), nil
@@ -407,7 +408,7 @@ func GetBytesStructField(apiObjectBytes []byte, tagValuePoint string) (interface
 
 func SetWhenFieldValueTypeMatch(apiObject interface{}, fieldName string, fieldValues interface{}) error {
 	if fieldName == "" {
-		return fmt.Errorf("fieldName not set")
+		return errors.New("fieldName not set")
 	}
 
 	rv := reflect.ValueOf(apiObject)
@@ -418,25 +419,25 @@ func SetWhenFieldValueTypeMatch(apiObject interface{}, fieldName string, fieldVa
 	}
 
 	if rv.Kind() != reflect.Struct {
-		return fmt.Errorf("apiObject not struct,%v", rv.Kind())
+		return errors.Errorf("apiObject not struct,%v", rv.Kind())
 	}
 
 	if !rv.IsValid() {
-		return fmt.Errorf("apiObject not vaild")
+		return errors.New("apiObject not vaild")
 	}
 
 	sft, exist := rt.FieldByName(fieldName)
 	if !exist {
-		return fmt.Errorf("apiObject doesn't has field named %v", fieldName)
+		return errors.Errorf("apiObject doesn't has field named %v", fieldName)
 	}
 	fv := rv.FieldByName(fieldName)
 	ft := sft.Type
 	if !fv.CanSet() {
-		return fmt.Errorf("field %v cannot set", fieldName)
+		return errors.Errorf("field %v cannot set", fieldName)
 	}
 
 	if ft != reflect.TypeOf(fieldValues) {
-		return fmt.Errorf(
+		return errors.Errorf(
 			"type not match, field %v type is %v while passing value type is %v",
 			fieldName,
 			ft,

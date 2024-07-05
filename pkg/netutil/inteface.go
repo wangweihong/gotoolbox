@@ -1,9 +1,10 @@
 package netutil
 
 import (
-	"fmt"
 	"net"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 func GetDefaultInterface() (*net.Interface, error) {
@@ -21,5 +22,5 @@ func GetDefaultInterface() (*net.Interface, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no suitable network interface found")
+	return nil, errors.New("no suitable network interface found")
 }

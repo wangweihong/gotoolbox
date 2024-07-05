@@ -213,7 +213,7 @@ func TestWrapErrorWithCode(t *testing.T) {
 }
 
 func a() error {
-	return fmt.Errorf("error a")
+	return errors.New("error a")
 }
 
 func b() error {

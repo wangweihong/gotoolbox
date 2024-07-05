@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -26,13 +25,13 @@ func (s *SSHFile) Upload(remote, local string) error {
 
 	remoteFile, err := s.sftpClient.Create(remote)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to create remote file: %v", err))
+		return errors.WithStack(errors.New("failed to create remote file: %v", err))
 	}
 	defer remoteFile.Close()
 
 	_, err = io.Copy(remoteFile, localFile)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to copy file: %v", err))
+		return errors.WithStack(errors.New("failed to copy file: %v", err))
 	}
 	return nil
 }
@@ -41,7 +40,7 @@ func (s *SSHFile) Upload(remote, local string) error {
 func (s *SSHFile) Download(remote, local string) error {
 	remoteFile, err := s.sftpClient.Open(remote)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to create remote file: %v", err))
+		return errors.WithStack(errors.New("failed to create remote file: %v", err))
 	}
 	defer remoteFile.Close()
 
@@ -53,7 +52,7 @@ func (s *SSHFile) Download(remote, local string) error {
 
 	_, err = io.Copy(localFile, remoteFile)
 	if err != nil {
-		return errors.WithStack(fmt.Errorf("failed to copy file: %v", err))
+		return errors.WithStack(errors.New("failed to copy file: %v", err))
 	}
 	return nil
 }
@@ -70,14 +69,14 @@ func (s *SSHFile) ListDirectory(remoteDir string) ([]os.FileInfo, error) {
 func (s *SSHFile) ReadFile(remoteFilePath string) (string, error) {
 	remoteFile, err := s.sftpClient.Open(remoteFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open remote file: %w", err)
+		return "", errors.New("failed to open remote file: %w", err)
 	}
 	defer remoteFile.Close()
 
 	content := make([]byte, 1024)
 	n, err := remoteFile.Read(content)
 	if err != nil && err.Error() != "EOF" {
-		return "", fmt.Errorf("failed to read remote file: %w", err)
+		return "", errors.New("failed to read remote file: %w", err)
 	}
 
 	return string(content[:n]), nil
@@ -86,7 +85,7 @@ func (s *SSHFile) ReadFile(remoteFilePath string) (string, error) {
 func (s *SSHFile) Close() error {
 	_ = s.sftpClient.Close()
 	if err := s.sshClient.Close(); err != nil {
-		return fmt.Errorf("failed to close SSH session: %v", err)
+		return errors.New("failed to close SSH session: %v", err)
 	}
 	return nil
 }

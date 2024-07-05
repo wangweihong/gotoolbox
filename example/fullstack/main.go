@@ -4,6 +4,10 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"os"
+	"runtime"
+
+	"go.opentelemetry.io/otel/propagation"
 
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 
@@ -18,9 +22,10 @@ import (
 const serviceName = "AdderSvc"
 
 func main() {
+	os.Setenv("GODEBUG", "http2debug=2")
 	ctx := context.Background()
 	{
-		tp, err := setupTracing(ctx, serviceName)
+		tp, err := initTracer(ctx, serviceName)
 		if err != nil {
 			panic(err)
 		}
@@ -41,7 +46,7 @@ func main() {
 func serviceA(ctx context.Context, port int) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/serviceA", serviceA_HttpHandler)
-	handler := otelhttp.NewHandler(mux, "server.http")
+	handler := otelhttp.NewHandler(mux, "server.http.serviceA")
 	serverPort := fmt.Sprintf(":%d", port)
 	server := &http.Server{Addr: serverPort, Handler: handler}
 
@@ -51,9 +56,29 @@ func serviceA(ctx context.Context, port int) {
 	}
 }
 
+func getStackTrace() string {
+	pc := make([]uintptr, 10)
+	n := runtime.Callers(3, pc)
+	frames := runtime.CallersFrames(pc[:n])
+
+	var stackTrace string
+	for {
+		frame, more := frames.Next()
+		stackTrace += fmt.Sprintf("%s\n\t%s:%d\n", frame.Function, frame.File, frame.Line)
+		if !more {
+			break
+		}
+	}
+	return stackTrace
+}
+
 func serviceA_HttpHandler(w http.ResponseWriter, r *http.Request) {
 	ctx, span := otel.Tracer("myTracer").Start(r.Context(), "serviceA_HttpHandler")
 	defer span.End()
+
+	span.SetAttributes(attribute.String("parent_span_id", span.SpanContext().SpanID().String()))
+	stackTrace := getStackTrace()
+	span.SetAttributes(attribute.String("stack_trace", stackTrace))
 
 	cli := &http.Client{
 		Transport: otelhttp.NewTransport(http.DefaultTransport),
@@ -62,6 +87,10 @@ func serviceA_HttpHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
+
+	req = req.WithContext(r.Context())
+
+	otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
 	resp, err := cli.Do(req)
 	if err != nil {
 		panic(err)
@@ -73,7 +102,7 @@ func serviceA_HttpHandler(w http.ResponseWriter, r *http.Request) {
 func serviceB(ctx context.Context, port int) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/serviceB", serviceB_HttpHandler)
-	handler := otelhttp.NewHandler(mux, "server.http")
+	handler := otelhttp.NewHandler(mux, "server.http.serviceB")
 	serverPort := fmt.Sprintf(":%d", port)
 	server := &http.Server{Addr: serverPort, Handler: handler}
 
@@ -84,7 +113,12 @@ func serviceB(ctx context.Context, port int) {
 }
 
 func serviceB_HttpHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, span := otel.Tracer("myTracer").Start(r.Context(), "serviceB_HttpHandler")
+	ctx := r.Context()
+
+	// Extract the trace context from the incoming requests
+	ctx = otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(r.Header))
+
+	ctx, span := otel.Tracer("myTracer").Start(ctx, "serviceB_HttpHandler")
 	defer span.End()
 
 	answer := add(ctx, 42, 1813)

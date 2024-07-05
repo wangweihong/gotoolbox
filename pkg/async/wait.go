@@ -1,11 +1,12 @@
 package async
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 var refreshGracePeriod = 30 * time.Second
@@ -134,7 +135,7 @@ func (conf *StateChangeConf) WaitForState() (interface{}, error) {
 				// not finding it for awhile, and if so, report an error.
 				notfoundTick++
 				if notfoundTick > conf.NotFoundChecks {
-					result.Error = fmt.Errorf("couldn't find resource (%d retries)", notfoundTick)
+					result.Error = errors.Errorf("couldn't find resource (%d retries)", notfoundTick)
 					resCh <- result
 					return
 				}
@@ -165,7 +166,7 @@ func (conf *StateChangeConf) WaitForState() (interface{}, error) {
 				}
 
 				if !found && len(conf.Pending) > 0 {
-					result.Error = fmt.Errorf("unexpected state '%s', wanted target '%s'. last error: %v",
+					result.Error = errors.Errorf("unexpected state '%s', wanted target '%s'. last error: %v",
 						result.State,
 						strings.Join(conf.Target, ", "),
 						err,
@@ -177,7 +178,7 @@ func (conf *StateChangeConf) WaitForState() (interface{}, error) {
 
 			if conf.Cancel != nil {
 				if ok := conf.Cancel(); ok {
-					result.Error = errors.New("forced cancel")
+					result.Error = errors.Errorf("forced cancel")
 					resCh <- result
 					return
 				}

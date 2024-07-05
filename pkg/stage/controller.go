@@ -2,6 +2,9 @@ package stage
 
 import (
 	"context"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -101,7 +104,7 @@ func (d *ExecuteStageController) GetError() error {
 	}
 
 	currentStage := d.stages[d.currentStage]
-	return fmt.Errorf("stage %v meet error:%v", currentStage.Name, currentStage.ErrorMessage)
+	return errors.Errorf("stage %v meet error:%v", currentStage.Name, currentStage.ErrorMessage)
 }
 
 func (d *ExecuteStageController) Run() error {
@@ -111,11 +114,11 @@ func (d *ExecuteStageController) Run() error {
 		defer d.lock.Unlock()
 		switch d.state {
 		case StateRunning:
-			return fmt.Errorf("state controller has run")
+			return errors.New("state controller has run")
 		case StateError:
-			return fmt.Errorf("state controller run fail")
+			return errors.New("state controller run fail")
 		case StateComplete:
-			return fmt.Errorf("state controller run complete")
+			return errors.New("state controller run complete")
 		}
 
 		d.state = StateRunning

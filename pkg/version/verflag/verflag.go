@@ -6,7 +6,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/wangweihong/eazycloud/pkg/version"
+	"github.com/wangweihong/gotoolbox/pkg/version"
 
 	"github.com/spf13/pflag"
 )

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -24,7 +25,7 @@ import (
 )
 
 func doSomething(ctx context.Context) error {
-	return fmt.Errorf("an error occurred in ServiceC")
+	return errors.New("an error occurred in ServiceC")
 }
 
 func getStackTrace() []string {

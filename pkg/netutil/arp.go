@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"net"
 	"os/exec"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 // GetMacIPFromARPCache 从ARP缓存表获取mac地址的ip
@@ -36,7 +37,7 @@ func GetMacIPFromARPCache(mac string) (string, error) {
 		return "", err
 	}
 
-	return "", fmt.Errorf("MAC address not found in ARP table")
+	return "", errors.New("MAC address not found in ARP table")
 }
 
 const (
@@ -59,17 +60,17 @@ type ARPHeader struct {
 func GetMacIPFromARPBroadcast(targetMAC string) (string, error) {
 	targetMACBytes, err := net.ParseMAC(targetMAC)
 	if err != nil {
-		return "", fmt.Errorf("error parsing MAC address:%v", err)
+		return "", errors.Errorf("error parsing MAC address:%v", err)
 	}
 
 	iface, err := GetDefaultInterface()
 	if err != nil {
-		return "", fmt.Errorf("error getting default interface:%v", err)
+		return "", errors.Errorf("error getting default interface:%v", err)
 	}
 
 	conn, err := net.ListenPacket("ethernet", iface.Name)
 	if err != nil {
-		return "", fmt.Errorf("error creating raw socket:%v", err)
+		return "", errors.Errorf("error creating raw socket:%v", err)
 	}
 	defer conn.Close()
 
@@ -112,7 +113,7 @@ func GetMacIPFromARPBroadcast(targetMAC string) (string, error) {
 	// Send ARP request
 	_, err = conn.WriteTo(ethFrame, &net.UDPAddr{IP: net.IPv4bcast})
 	if err != nil {
-		return "", fmt.Errorf("error sending ARP request:%v", err)
+		return "", errors.Errorf("error sending ARP request:%v", err)
 	}
 
 	// Listen for ARP reply
@@ -120,7 +121,7 @@ func GetMacIPFromARPBroadcast(targetMAC string) (string, error) {
 	for {
 		n, _, err := conn.ReadFrom(buf)
 		if err != nil {
-			return "", fmt.Errorf("error reading from socket:%v", err)
+			return "", errors.Errorf("error reading from socket:%v", err)
 		}
 
 		// Parse Ethernet frame

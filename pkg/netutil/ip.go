@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"github.com/go-ping/ping"
 )
 
@@ -58,7 +60,7 @@ func GetIPAddr(wantIpv6 bool) (string, error) {
 		return "", err
 	}
 	if len(ips) == 0 {
-		return "", fmt.Errorf("local ips is empty")
+		return "", errors.New("local ips is empty")
 	}
 
 	return ips[0], nil
@@ -102,7 +104,7 @@ func ParseAddrFromURL(rawurl string) (string, error) {
 func GetLocalIP() (string, error) {
 	ips, err := GetIPAddrs(false)
 	if len(ips) == 0 || err != nil {
-		return "", fmt.Errorf("cannot get ip, err:%v", err)
+		return "", errors.Errorf("cannot get ip, err:%v", err)
 	}
 
 	return ips[0], nil

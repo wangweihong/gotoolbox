@@ -3,7 +3,7 @@ package grpctls
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"os"
 
@@ -30,7 +30,7 @@ func NewTlsClientCredentials(serverCA []byte) (credentials.TransportCredentials,
 	// Load certificate of the CA who signed server's certificate
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(serverCA) {
-		return nil, fmt.Errorf("failed to add server CA's certificate")
+		return nil, errors.New("failed to add server CA's certificate")
 	}
 
 	// Create the credentials and return it
@@ -60,7 +60,7 @@ func NewMutualTlsClientCredentials(
 	// Load certificate of the CA who signed server's certificate
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(serverCA) {
-		return nil, fmt.Errorf("failed to add server CA's certificate")
+		return nil, errors.New("failed to add server CA's certificate")
 	}
 
 	// Load client's certificate and private key
@@ -89,12 +89,12 @@ func LoadMutualTlsClientCredentials(
 
 	certPEMBlock, err := os.ReadFile(clientCertPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load client certificate")
+		return nil, errors.New("failed to load client certificate")
 	}
 
 	keyPEMBlock, err := os.ReadFile(clientKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load client key")
+		return nil, errors.New("failed to load client key")
 	}
 
 	return NewMutualTlsClientCredentials(pemServerCA, certPEMBlock, keyPEMBlock)

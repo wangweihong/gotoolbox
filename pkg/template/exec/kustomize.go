@@ -22,12 +22,12 @@ type KustomizedTemplateDirParser struct {
 // 如果有kustomization, 先用kustomize解析后再部署到k8s中
 func (p *KustomizedTemplateDirParser) RunCreate() error {
 	if p.Error() != nil {
-		return fmt.Errorf("templateDirProc %v meet error before run:%v ", p.TemplateName, p.Error())
+		return errors.New("templateDirProc %v meet error before run:%v ", p.TemplateName, p.Error())
 	}
 	kustomizePath := filepath.Join(p.LocateParsedDir, "kustomization.yaml")
 	if _, err := os.Stat(kustomizePath); err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("stat kustomizePath:%v fail:%v", kustomizePath, err)
+			return errors.New("stat kustomizePath:%v fail:%v", kustomizePath, err)
 		}
 		args := []string{"--kubeconfig", p.KubeconfigPath, "apply", "-f", p.LocateParsedDir}
 		if _, stderr, err := executil.ExecuteCmdSplitStdoutStderr(p.KubectlPath, args, 120); err != nil {

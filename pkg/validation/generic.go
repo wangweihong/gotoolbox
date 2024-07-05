@@ -1,13 +1,14 @@
 package validation
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"regexp"
 	"strings"
 	"unicode"
 
-	"github.com/wangweihong/eazycloud/pkg/validation/field"
+	"github.com/wangweihong/gotoolbox/pkg/validation/field"
 )
 
 const (
@@ -296,7 +297,7 @@ func IsValidPassword(password string) error {
 	}
 
 	if len(errorString) != 0 {
-		return fmt.Errorf(errorString)
+		return errors.New(errorString)
 	}
 
 	return nil

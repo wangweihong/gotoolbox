@@ -1,12 +1,13 @@
 package mathutil
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 func ConvertMBToByte(sizeInMB int64) int64 {
@@ -105,7 +106,7 @@ func ParseSizeInMb(size string) (int64, error) {
 	case "t":
 		value *= tb
 	default:
-		return 0, fmt.Errorf("Unrecongized size value %v", size)
+		return 0, errors.Errorf("Unrecongized size value %v", size)
 	}
 
 	valueMb := (value / mb)
@@ -128,7 +129,7 @@ func ParseSizeInByte(size string) (uint64, error) {
 	unit := string(size[last])
 	value, err := strconv.ParseFloat(size[:last], 64)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 
 	kb := float64(1024)
@@ -145,7 +146,7 @@ func ParseSizeInByte(size string) (uint64, error) {
 	case "t", "T":
 		value *= tb
 	default:
-		return 0, fmt.Errorf("Unrecongized size value %v", size)
+		return 0, errors.Errorf("Unrecongized size value %v", size)
 	}
 	return uint64(value), err
 }
@@ -159,14 +160,14 @@ func ParseSizeRoundUpInByte(size string) (uint64, error) {
 	readableSize := regexp.MustCompile(`^[0-9.]+[kmgtKMGT]$`)
 	if !readableSize.MatchString(size) {
 		value, err := strconv.ParseUint(size, 10, 64)
-		return value, err
+		return value, errors.WithStack(err)
 	}
 
 	last := len(size) - 1
 	unit := string(size[last])
 	value, err := strconv.ParseFloat(size[:last], 64)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 
 	retValue := uint64(0)
@@ -183,7 +184,7 @@ func ParseSizeRoundUpInByte(size string) (uint64, error) {
 		retValue = uint64(math.Ceil(value * 1024)) // gb向上取整
 		retValue <<= 30                            // gb换算为字节
 	default:
-		return 0, fmt.Errorf("Unrecongized size value %s ", size)
+		return 0, errors.Errorf("Unrecongized size value %s ", size)
 	}
 
 	return retValue, err
@@ -198,14 +199,14 @@ func ParseSizeInBit(size string) (uint64, error) {
 	readableSize := regexp.MustCompile(`^[0-9.]+[kmgt]$`)
 	if !readableSize.MatchString(size) {
 		value, err := strconv.ParseUint(size, 10, 64)
-		return value, err
+		return value, errors.WithStack(err)
 	}
 
 	last := len(size) - 1
 	unit := string(size[last])
 	value, err := strconv.ParseUint(size[:last], 10, 64)
 	if err != nil {
-		return 0, err
+		return 0, errors.WithStack(err)
 	}
 
 	kb := uint64(1024)
@@ -222,9 +223,9 @@ func ParseSizeInBit(size string) (uint64, error) {
 	case "t":
 		value *= tb
 	default:
-		return 0, fmt.Errorf("Unrecongized size value %v", size)
+		return 0, errors.Errorf("Unrecongized size value %v", size)
 	}
-	return uint64(value), err
+	return uint64(value), nil
 }
 
 func ParseSizeByteToStrExactly(size int64, scale int) string {
@@ -288,7 +289,7 @@ func ConvertSizeStructToBytes(value uint64, unit string) (uint64, error) {
 	case "E", "EiB":
 		capacity *= 1024 * 1024 * 1024 * 1024 * 1024 * 1024
 	default:
-		return 0, fmt.Errorf("unit")
+		return 0, errors.New("unit")
 	}
 	return capacity, nil
 }

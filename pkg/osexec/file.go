@@ -6,6 +6,7 @@ package osexec
 import (
 	"archive/tar"
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -171,7 +172,7 @@ func GetTarSize(file string) (uint64, error) {
 	}
 	output, err := executil.ExecuteTimeout("tar", opts, 3600)
 	if err != nil {
-		return 0, fmt.Errorf("execute tar tvf %s error %s", file, err)
+		return 0, errors.New("execute tar tvf %s error %s", file, err)
 	}
 	re := regexp.MustCompile("\\s+")
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -183,7 +184,7 @@ func GetTarSize(file string) (uint64, error) {
 		}
 		fileSize, err := strconv.ParseUint(strList[2], 10, 64)
 		if err != nil {
-			return 0, fmt.Errorf("parse %s to uint64 error %s", strList[2], err)
+			return 0, errors.New("parse %s to uint64 error %s", strList[2], err)
 		}
 		size += fileSize
 	}

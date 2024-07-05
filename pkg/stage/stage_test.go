@@ -2,6 +2,7 @@ package stage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"testing"
@@ -22,7 +23,7 @@ var (
 
 	errStage = NewExecuteStage("error", "错误", func(ctx context.Context) error {
 		time.Sleep(1)
-		return fmt.Errorf("i am error")
+		return errors.New("i am error")
 	})
 )
 

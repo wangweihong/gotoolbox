@@ -1,8 +1,9 @@
 package cache
 
 import (
-	"fmt"
 	"sync"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/sets"
 )
@@ -73,7 +74,7 @@ func (c *threadSafeMap) Inject(key string, obj interface{}) error {
 	defer c.lock.Unlock()
 	oldObject := c.items[key]
 	if oldObject != nil {
-		return fmt.Errorf("object %v exist", key)
+		return errors.Errorf("object %v exist", key)
 	}
 
 	c.items[key] = obj
@@ -87,7 +88,7 @@ func (c *threadSafeMap) Update(key string, obj interface{}) error {
 	defer c.lock.Unlock()
 	oldObject := c.items[key]
 	if oldObject == nil {
-		return fmt.Errorf("object %v not exist", key)
+		return errors.Errorf("object %v not exist", key)
 	}
 
 	c.items[key] = obj
@@ -159,7 +160,7 @@ func (c *threadSafeMap) Index(indexName string, obj interface{}) ([]interface{},
 
 	indexFunc := c.indexers[indexName]
 	if indexFunc == nil {
-		return nil, fmt.Errorf("Index with name %s does not exist", indexName)
+		return nil, errors.Errorf("Index with name %s does not exist", indexName)
 	}
 
 	indexedValues, err := indexFunc(obj)
@@ -200,7 +201,7 @@ func (c *threadSafeMap) ByIndex(indexName, indexedValue string) ([]interface{}, 
 	// 找到指定的索引器
 	indexFunc := c.indexers[indexName]
 	if indexFunc == nil {
-		return nil, fmt.Errorf("Index with name %s does not exist", indexName)
+		return nil, errors.Errorf("Index with name %s does not exist", indexName)
 	}
 	// 索引值表
 	index := c.indices[indexName]
@@ -224,7 +225,7 @@ func (c *threadSafeMap) IndexKeys(indexName, indexedValue string) ([]string, err
 
 	indexFunc := c.indexers[indexName]
 	if indexFunc == nil {
-		return nil, fmt.Errorf("Index with name %s does not exist", indexName)
+		return nil, errors.Errorf("Index with name %s does not exist", indexName)
 	}
 
 	index := c.indices[indexName]
@@ -257,7 +258,7 @@ func (c *threadSafeMap) AddIndexers(newIndexers Indexers) error {
 	defer c.lock.Unlock()
 
 	if len(c.items) > 0 {
-		return fmt.Errorf("cannot add indexers to running index")
+		return errors.Errorf("cannot add indexers to running index")
 	}
 
 	// 提取之前的索引器列表
@@ -267,7 +268,7 @@ func (c *threadSafeMap) AddIndexers(newIndexers Indexers) error {
 
 	// 如果新的索引器之前已经存在，则报错
 	if oldKeys.HasAny(newKeys.List()...) {
-		return fmt.Errorf("indexer conflict: %v", oldKeys.Intersection(newKeys))
+		return errors.Errorf("indexer conflict: %v", oldKeys.Intersection(newKeys))
 	}
 
 	for k, v := range newIndexers {
@@ -289,7 +290,7 @@ func (c *threadSafeMap) updateIndices(oldObj interface{}, newObj interface{}, ke
 		// 算出新的对象的索引值
 		indexValues, err := indexFunc(newObj)
 		if err != nil {
-			panic(fmt.Errorf("unable to calculate an index entry for key %q on index %q: %w", key, name, err))
+			panic(errors.Errorf("unable to calculate an index entry for key %q on index %q: %w", key, name, err))
 		}
 		index := c.indices[name]
 		if index == nil {
@@ -319,7 +320,7 @@ func (c *threadSafeMap) deleteFromIndices(obj interface{}, key string) {
 		// 索引值具体是什么，uuid/id/name取决于添加到索引器的设计。
 		indexValues, err := indexFunc(obj)
 		if err != nil {
-			panic(fmt.Errorf("unable to calculate an index entry for key %q on index %q: %w", key, name, err))
+			panic(errors.Errorf("unable to calculate an index entry for key %q on index %q: %w", key, name, err))
 		}
 		// 如果索引器已经被删除，则忽略
 		index := c.indices[name]

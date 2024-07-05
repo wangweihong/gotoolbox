@@ -1,6 +1,7 @@
 package generators
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"path/filepath"
@@ -307,17 +308,17 @@ func deepCopyMethod(t *types.Type) (*types.Signature, error) {
 		return nil, nil
 	}
 	if len(f.Signature.Parameters) != 0 {
-		return nil, fmt.Errorf("type %v: invalid DeepCopy signature, expected no parameters", t)
+		return nil, errors.New("type %v: invalid DeepCopy signature, expected no parameters", t)
 	}
 	if len(f.Signature.Results) != 1 {
-		return nil, fmt.Errorf("type %v: invalid DeepCopy signature, expected exactly one result", t)
+		return nil, errors.New("type %v: invalid DeepCopy signature, expected exactly one result", t)
 	}
 
 	ptrResult := f.Signature.Results[0].Kind == types.Pointer && f.Signature.Results[0].Elem.Name == t.Name
 	nonPtrResult := f.Signature.Results[0].Name == t.Name
 
 	if !ptrResult && !nonPtrResult {
-		return nil, fmt.Errorf(
+		return nil, errors.New(
 			"type %v: invalid DeepCopy signature, expected to return %s or *%s",
 			t,
 			t.Name.Name,
@@ -330,7 +331,7 @@ func deepCopyMethod(t *types.Type) (*types.Signature, error) {
 	nonPtrRcvr := f.Signature.Receiver != nil && f.Signature.Receiver.Name == t.Name
 
 	if ptrRcvr && !ptrResult {
-		return nil, fmt.Errorf(
+		return nil, errors.New(
 			"type %v: invalid DeepCopy signature, expected a *%s result for a *%s receiver",
 			t,
 			t.Name.Name,
@@ -338,7 +339,7 @@ func deepCopyMethod(t *types.Type) (*types.Signature, error) {
 		)
 	}
 	if nonPtrRcvr && !nonPtrResult {
-		return nil, fmt.Errorf(
+		return nil, errors.New(
 			"type %v: invalid DeepCopy signature, expected a %s result for a %s receiver",
 			t,
 			t.Name.Name,
@@ -375,16 +376,16 @@ func deepCopyIntoMethod(t *types.Type) (*types.Signature, error) {
 		return nil, nil
 	}
 	if len(f.Signature.Parameters) != 1 {
-		return nil, fmt.Errorf("type %v: invalid DeepCopy signature, expected exactly one parameter", t)
+		return nil, errors.New("type %v: invalid DeepCopy signature, expected exactly one parameter", t)
 	}
 	if len(f.Signature.Results) != 0 {
-		return nil, fmt.Errorf("type %v: invalid DeepCopy signature, expected no result type", t)
+		return nil, errors.New("type %v: invalid DeepCopy signature, expected no result type", t)
 	}
 
 	ptrParam := f.Signature.Parameters[0].Kind == types.Pointer && f.Signature.Parameters[0].Elem.Name == t.Name
 
 	if !ptrParam {
-		return nil, fmt.Errorf("type %v: invalid DeepCopy signature, expected parameter of type *%s", t, t.Name.Name)
+		return nil, errors.New("type %v: invalid DeepCopy signature, expected parameter of type *%s", t, t.Name.Name)
 	}
 
 	ptrRcvr := f.Signature.Receiver != nil && f.Signature.Receiver.Kind == types.Pointer &&
@@ -393,7 +394,7 @@ func deepCopyIntoMethod(t *types.Type) (*types.Signature, error) {
 
 	if !ptrRcvr && !nonPtrRcvr {
 		// this should never happen
-		return nil, fmt.Errorf(
+		return nil, errors.New(
 			"type %v: invalid DeepCopy signature, expected a receiver of type %s or *%s",
 			t,
 			t.Name.Name,
@@ -546,7 +547,7 @@ func extractNonPointerInterfaces(t *types.Type) (bool, error) {
 	result := values[0] == "true"
 	for _, v := range values {
 		if v == "true" != result {
-			return false, fmt.Errorf(
+			return false, errors.New(
 				"contradicting %v value %q found to previous value %v",
 				interfacesNonPointerTagName,
 				v,
@@ -573,10 +574,10 @@ func (g *genDeepCopy) deepCopyableInterfacesInner(c *generator.Context, t *types
 		}
 		intfT := c.Universe.Type(t)
 		if intfT == nil {
-			return nil, fmt.Errorf("unknown type %q in %s tag of type %s", intf, interfacesTagName, intfT)
+			return nil, errors.New("unknown type %q in %s tag of type %s", intf, interfacesTagName, intfT)
 		}
 		if intfT.Kind != types.Interface {
-			return nil, fmt.Errorf(
+			return nil, errors.New(
 				"type %q in %s tag of type %s is not an interface, but: %q",
 				intf,
 				interfacesTagName,

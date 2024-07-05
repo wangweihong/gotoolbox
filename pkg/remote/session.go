@@ -6,6 +6,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"golang.org/x/crypto/ssh"
 )
 
@@ -39,7 +40,7 @@ func (s *SSHSession) Exec(command string) (string, error) {
 	reader := bufio.NewReader(s.StdoutPipe)
 	line, err := reader.ReadString('\n')
 	if err != nil && err != io.EOF {
-		return "", fmt.Errorf("failed to read from stdout: %v", err)
+		return "", errors.Errorf("failed to read from stdout: %v", err)
 	}
 
 	return line, nil
@@ -48,7 +49,7 @@ func (s *SSHSession) Exec(command string) (string, error) {
 func (s *SSHSession) Close() error {
 	// Close the SSH session
 	if err := s.Session.Close(); err != nil {
-		return fmt.Errorf("failed to close SSH session: %v", err)
+		return errors.Errorf("failed to close SSH session: %v", err)
 	}
 
 	if s.TimeoutTimer != nil {

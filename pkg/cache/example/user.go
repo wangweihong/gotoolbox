@@ -1,11 +1,11 @@
 package example
 
 import (
-	"errors"
-	"fmt"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/cache"
 	"github.com/wangweihong/gotoolbox/pkg/sets"
@@ -36,7 +36,7 @@ type UserManagerInterface interface {
 
 func (u userManager) Add(obj *User) (*User, error) {
 	if obj.Name == "" {
-		return nil, fmt.Errorf("user name is empty")
+		return nil, errors.New("user name is empty")
 	}
 
 	meta := obj.DeepCopy()
@@ -53,7 +53,7 @@ func (u userManager) Add(obj *User) (*User, error) {
 
 func (u userManager) Update(obj *User) error {
 	if obj.UUID == "" {
-		return fmt.Errorf("user uuid is empty")
+		return errors.New("user uuid is empty")
 	}
 	// TODO: check user data if valid
 	meta := obj.DeepCopy()
@@ -263,11 +263,11 @@ type userManager struct {
 
 func userKeyFunc(obj interface{}) (string, error) {
 	if obj == nil {
-		return "", fmt.Errorf("object is nil")
+		return "", errors.Errorf("object is nil")
 	}
 	user, ok := obj.(*User)
 	if !ok {
-		return "", fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+		return "", errors.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
 	}
 	return user.UUID, nil
 }
@@ -282,7 +282,7 @@ const (
 func tenantUserIndexer(obj interface{}) ([]string, error) {
 	user, ok := obj.(*User)
 	if !ok {
-		return []string{""}, fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+		return []string{""}, errors.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
 	}
 	return []string{user.Tenant}, nil
 }
@@ -290,7 +290,7 @@ func tenantUserIndexer(obj interface{}) ([]string, error) {
 func groupUserIndexer(obj interface{}) ([]string, error) {
 	user, ok := obj.(*User)
 	if !ok {
-		return []string{""}, fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+		return []string{""}, errors.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
 	}
 	return user.Group, nil
 }
@@ -298,7 +298,7 @@ func groupUserIndexer(obj interface{}) ([]string, error) {
 func roleUserIndexer(obj interface{}) ([]string, error) {
 	user, ok := obj.(*User)
 	if !ok {
-		return []string{""}, fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+		return []string{""}, errors.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
 	}
 	return user.Roles, nil
 }

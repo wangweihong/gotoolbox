@@ -1,10 +1,10 @@
 package filereceiver
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"github.com/wangweihong/gotoolbox/pkg/mathutil"
 )
 
@@ -35,15 +35,15 @@ func NewFileReceiver(dir, filename string, totalSize, partitionSize int64) (File
 	path := filepath.Join(dir, filename)
 
 	if path == "" {
-		return nil, fmt.Errorf("invalid filepath")
+		return nil, errors.New("invalid filepath")
 	}
 
 	if totalSize == 0 {
-		return nil, fmt.Errorf("totalSize cannot be 0")
+		return nil, errors.New("totalSize cannot be 0")
 	}
 
 	if partitionSize == 0 {
-		return nil, fmt.Errorf("partition Size cannot be 0")
+		return nil, errors.New("partition Size cannot be 0")
 	}
 
 	partitionIndex := totalSize / partitionSize
@@ -60,18 +60,18 @@ func NewFileReceiver(dir, filename string, totalSize, partitionSize int64) (File
 
 func (f *fileReceiver) Receive(data []byte, index int64) error {
 	if index > f.partitionIndex {
-		return fmt.Errorf("invalid partition index")
+		return errors.New("invalid partition index")
 	}
 
 	dataLen := int64(len(data))
 	if dataLen > f.partitionSize {
-		return fmt.Errorf("data exceed partition size %vk", mathutil.ParseSizeByteToStr(uint64(f.partitionSize)))
+		return errors.Errorf("data exceed partition size %vk", mathutil.ParseSizeByteToStr(uint64(f.partitionSize)))
 	}
 
 	offset := index * f.partitionSize
 
 	if offset+dataLen > f.totalSize {
-		return fmt.Errorf("exceed file size")
+		return errors.New("exceed file size")
 	}
 
 	var fp *os.File
@@ -102,7 +102,7 @@ func (f *fileReceiver) Receive(data []byte, index int64) error {
 	}
 
 	if int64(n) != dataLen {
-		return fmt.Errorf("write data len no match datalen")
+		return errors.New("write data len no match datalen")
 	}
 
 	return nil

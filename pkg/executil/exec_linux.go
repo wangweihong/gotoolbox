@@ -1,6 +1,8 @@
 package executil
 
 import (
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"fmt"
 	"os/exec"
 	"os/user"
@@ -17,7 +19,7 @@ func ExecuteByUser(binary string, args []string, executeUser string) (string, er
 func ExecuteTimeoutByUser(binary string, args []string, timeout time.Duration, targetUser string) (string, error) {
 	for _, arg := range args {
 		if strings.Contains(arg, "`") {
-			return "", fmt.Errorf("timeout executing: %v,error: %s contain special symbols", binary, arg)
+			return "", errors.Errorf("timeout executing: %v,error: %s contain special symbols", binary, arg)
 		}
 	}
 	return ExecuteTimeoutEnvByUser(binary, args, timeout, nil, targetUser)
@@ -51,12 +53,12 @@ func ExecuteTimeoutEnvByUser(binary string, args []string, timeout time.Duration
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
-		return "", fmt.Errorf("timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", errors.Errorf("timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
 	}
 
 	if err != nil {
 		if !strings.Contains(err.Error(), "no child processes") {
-			return "", fmt.Errorf("failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+			return "", errors.Errorf("failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
 		} else {
 			fmt.Printf("execute: %v %v, output %v, error %v", binary, args, string(output), err)
 		}

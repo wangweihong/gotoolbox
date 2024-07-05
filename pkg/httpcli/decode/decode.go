@@ -1,9 +1,10 @@
 package decode
 
 import (
-	"fmt"
 	"mime"
 	"sync"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 const (
@@ -46,7 +47,7 @@ func (mm *MarshalMapping) Register(mediaType string, u UnmarshalFunc) error {
 	defer mm.lock.Unlock()
 
 	if _, ok := mm.mappings[mediaType]; ok {
-		return fmt.Errorf("manifest media type registration would overwrite existing: %s", mediaType)
+		return errors.Errorf("manifest media type registration would overwrite existing: %s", mediaType)
 	}
 	mm.mappings[mediaType] = u
 	return nil
@@ -73,7 +74,7 @@ func (mm *MarshalMapping) UnmarshalManifest(ctHeader string, p []byte, arg inter
 
 	unmarshalFunc, ok := mm.mappings[mediaType]
 	if !ok {
-		return fmt.Errorf("unsupported Content-Type %v", mediaType)
+		return errors.Errorf("unsupported Content-Type %v", mediaType)
 	}
 
 	return unmarshalFunc(p, arg)

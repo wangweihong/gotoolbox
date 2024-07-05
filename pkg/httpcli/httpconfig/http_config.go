@@ -2,7 +2,7 @@ package httpconfig
 
 import (
 	"crypto/tls"
-	"fmt"
+	"errors"
 	"net/http"
 	"net/url"
 	"time"
@@ -40,18 +40,18 @@ func (c *HttpConfig) Validate() error {
 	if c.TlsEnabled {
 		if !c.SkipTlsVerified {
 			if c.ServerCA == "" {
-				return fmt.Errorf("must set serverCA when tlsEnabled and not skipTlsVerified")
+				return errors.New("must set serverCA when tlsEnabled and not skipTlsVerified")
 			}
 		}
 	}
 
 	if c.MutualTlsEnabled {
 		if c.ClientKeyData == "" || c.ClientCertData == "" {
-			return fmt.Errorf("must provide clientKeyPEMData and clientCertPEMData when enable mTls")
+			return errors.New("must provide clientKeyPEMData and clientCertPEMData when enable mTls")
 		}
 
 		if c.ServerCA == "" {
-			return fmt.Errorf("must set serverCA when mtlsEnabled enable")
+			return errors.New("must set serverCA when mtlsEnabled enable")
 		}
 	}
 	return nil

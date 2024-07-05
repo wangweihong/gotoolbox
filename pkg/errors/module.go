@@ -2,10 +2,10 @@ package errors
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
-
-	"github.com/wangweihong/gotoolbox/pkg/netutil"
+	"strings"
 )
 
 var currentModule ModuleGetter
@@ -67,7 +67,7 @@ func ModuleString() string {
 func init() {
 	moduleIP := "127.0.0.1"
 
-	ipList, _ := netutil.GetIPAddrs(false)
+	ipList, _ := getIPAddrs(false)
 	for _, ip := range ipList {
 		if ip != "127.0.0.1" {
 			moduleIP = ip
@@ -80,4 +80,35 @@ func init() {
 		host: moduleIP,
 		pid:  os.Getpid(),
 	}
+}
+
+// don't use netutil for avoid import cycle
+func getIPAddrs(wantIpv6 bool) ([]string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	ips := make([]string, 0)
+	for _, iface := range ifaces {
+		if strings.HasPrefix(iface.Name, "e") ||
+			strings.HasPrefix(iface.Name, "br") {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+
+			for _, address := range addrs {
+				if ipnet, ok := address.(*net.IPNet); ok {
+					if p4 := ipnet.IP.To4(); len(p4) == net.IPv4len {
+						ips = append(ips, ipnet.IP.String())
+					} else if len(ipnet.IP) == net.IPv6len && wantIpv6 {
+						ips = append(ips, ipnet.IP.String())
+					}
+				}
+			}
+		}
+	}
+
+	return ips, nil
 }

@@ -1,8 +1,9 @@
 package tls
 
 import (
-	"fmt"
 	"os"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/stringutil"
 )
@@ -53,7 +54,7 @@ func LoadDataFromFile(certPath, keyPath string) (string, string, error) {
 
 func (s GeneratableKeyCert) Validate() error {
 	if !stringutil.BothEmptyOrNone(s.CertData.Cert, s.CertData.Key) {
-		return fmt.Errorf("cert-data.cert and cert-data.key must provided together")
+		return errors.New("cert-data.cert and cert-data.key must provided together")
 	}
 
 	if s.CertData.Cert != "" {
@@ -61,7 +62,7 @@ func (s GeneratableKeyCert) Validate() error {
 	}
 
 	if !stringutil.BothEmptyOrNone(s.CertKey.KeyFile, s.CertKey.CertFile) {
-		return fmt.Errorf("cert-key.cert-file and cert-key.private-key-file must provided together")
+		return errors.New("cert-key.cert-file and cert-key.private-key-file must provided together")
 	}
 
 	if s.CertKey.CertFile != "" {
@@ -69,14 +70,14 @@ func (s GeneratableKeyCert) Validate() error {
 	}
 
 	if !stringutil.BothEmptyOrNone(s.CertDirectory, s.PairName) {
-		return fmt.Errorf(" --cert-dir and --pair-name must provided together")
+		return errors.New(" --cert-dir and --pair-name must provided together")
 	}
 
 	if s.CertDirectory != "" {
 		return nil
 	}
 
-	return fmt.Errorf(
+	return errors.New(
 		"if required tls server, you should choose one way to set cert and key:" +
 			"cert-key.cert-file and cert-key.key-file," +
 			"cert-data.cert and cert-data.key," +

@@ -2,6 +2,9 @@ package waitgroup
 
 import (
 	"context"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -123,7 +126,7 @@ func (g *Group) PrintResults() {
 
 func (g *Group) handleWaitGroupCrash(st *Result) {
 	if x := recover(); x != nil {
-		st.Error = fmt.Errorf("runtime panic:%v, stack:%v", x, string(debug.Stack()))
+		st.Error = errors.Errorf("runtime panic:%v, stack:%v", x, string(debug.Stack()))
 	}
 }
 

@@ -3,7 +3,7 @@ package grpctls
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"os"
 
@@ -43,12 +43,12 @@ func NewTlsServerCredentials(serverCertData []byte, serverKeyData []byte) (crede
 func LoadTLSServerCredentials(serverCertPath, serverKeyPath string) (credentials.TransportCredentials, error) {
 	certPEMBlock, err := os.ReadFile(serverCertPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load server certificate")
+		return nil, errors.New("failed to load server certificate")
 	}
 
 	keyPEMBlock, err := os.ReadFile(serverKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load server key")
+		return nil, errors.New("failed to load server key")
 	}
 
 	return NewTlsServerCredentials(certPEMBlock, keyPEMBlock)
@@ -63,7 +63,7 @@ func NewMutualTlsServerCredentials(
 	// Load certificate of the CA who signed client's certificate
 	certPool := x509.NewCertPool()
 	if !certPool.AppendCertsFromPEM(clientCA) {
-		return nil, fmt.Errorf("failed to add client CA's certificate")
+		return nil, errors.New("failed to add client CA's certificate")
 	}
 
 	// Load server's certificate and private key
@@ -105,12 +105,12 @@ func LoadMutualTlsServerCredentials(
 
 	certPEMBlock, err := os.ReadFile(serverCertPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load server certificate")
+		return nil, errors.New("failed to load server certificate")
 	}
 
 	keyPEMBlock, err := os.ReadFile(serverKeyPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load server key")
+		return nil, errors.New("failed to load server key")
 	}
 
 	return NewMutualTlsServerCredentials(pemClientCA, certPEMBlock, keyPEMBlock)

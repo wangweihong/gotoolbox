@@ -1,7 +1,7 @@
 package terminal
 
 import (
-	"fmt"
+	"errors"
 	"io"
 
 	"github.com/moby/term"
@@ -13,7 +13,7 @@ import (
 func TerminalSize(w io.Writer) (int, int, error) {
 	outFd, isTerminal := term.GetFdInfo(w)
 	if !isTerminal {
-		return 0, 0, fmt.Errorf("given writer is no terminal")
+		return 0, 0, errors.New("given writer is no terminal")
 	}
 	winsize, err := term.GetWinsize(outFd)
 	if err != nil {

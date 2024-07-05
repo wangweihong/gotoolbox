@@ -2,7 +2,6 @@ package errors
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"reflect"
 	"testing"
@@ -29,8 +28,8 @@ func TestNew(t *testing.T) {
 		err  string
 		want error
 	}{
-		{"", fmt.Errorf("")},
-		{"foo", fmt.Errorf("foo")},
+		{"", errors.New("")},
+		{"foo", errors.New("foo")},
 		{"foo", New("foo")},
 		{"string with format specifiers: %v", errors.New("string with format specifiers: %v")},
 	}
@@ -326,7 +325,7 @@ func TestParseCoder(t *testing.T) {
 		wantCode      int
 		wantReference string
 	}{
-		{fmt.Errorf("yes error"), 500, "An internal server error occurred", 1, "http://github.com/marmotedu/errors/README.md"},
+		{errors.New("yes error"), 500, "An internal server error occurred", 1, "http://github.com/marmotedu/errors/README.md"},
 	}
 
 	for i, tt := range tests {

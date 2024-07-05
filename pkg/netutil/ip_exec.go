@@ -4,10 +4,11 @@
 package netutil
 
 import (
-	"fmt"
 	"net"
 	"strconv"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/executil"
 )
@@ -15,7 +16,7 @@ import (
 // ping 10.30.15.201 -w 5 -c 1
 func Pinger(address string, timeout int) error {
 	if address == "" || net.ParseIP(address) == nil {
-		return fmt.Errorf("invalid ip:%v", address)
+		return errors.Errorf("invalid ip:%v", address)
 	}
 
 	binary := "ping"

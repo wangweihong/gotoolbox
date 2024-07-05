@@ -1,6 +1,7 @@
 package async_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ func waitForSomethingHappen(moment time.Time) async.StateRefreshFunc {
 
 func waitForSomethingError() async.StateRefreshFunc {
 	return func() (interface{}, string, error) {
-		return "", "", fmt.Errorf("error")
+		return "", "", errors.New("error")
 	}
 }
 

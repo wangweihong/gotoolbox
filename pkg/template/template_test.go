@@ -1,6 +1,7 @@
 package template_test
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -89,7 +90,7 @@ func TestDirectoryProcessor_Parse(t *testing.T) {
 func generateDataPathPrint(rootPath, prefix string) error {
 	files, err := ioutil.ReadDir(rootPath)
 	if err != nil {
-		return fmt.Errorf("error reading directory %s: %v", rootPath, err)
+		return errors.New("error reading directory %s: %v", rootPath, err)
 	}
 	f, err := os.OpenFile("./fileName", os.O_RDWR, 0644)
 	if err != nil {
@@ -109,7 +110,7 @@ func generateDataPathPrint(rootPath, prefix string) error {
 			if !strings.HasSuffix(file.Name(), ".go") {
 				fileContent, err := ioutil.ReadFile(filePath)
 				if err != nil {
-					return fmt.Errorf("error reading file %s: %v", filePath, err)
+					return errors.New("error reading file %s: %v", filePath, err)
 				}
 
 				filepath.Join()
@@ -131,18 +132,18 @@ func generateDataType(packageName, outputDir string) error {
 	fn := "type_generated.go"
 	fp, err := os.Create(filepath.Join(outputDir, fn))
 	if err != nil {
-		return fmt.Errorf("error creating %v: %v", filepath.Join(outputDir, fn), err)
+		return errors.New("error creating %v: %v", filepath.Join(outputDir, fn), err)
 	}
 	defer fp.Close()
 
 	_, err = fp.WriteString(fmt.Sprintf("package %s\n\n", packageName))
 	if err != nil {
-		return fmt.Errorf("error writing to output file: %v", err)
+		return errors.New("error writing to output file: %v", err)
 	}
 
 	_, err = fp.WriteString("type GeneratedDataPath struct {\n\tData string\n\tPath string\n}\n\n")
 	if err != nil {
-		return fmt.Errorf("error writing to output file: %v", err)
+		return errors.New("error writing to output file: %v", err)
 	}
 	return nil
 }

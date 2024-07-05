@@ -2,6 +2,7 @@ package template
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
@@ -40,12 +41,12 @@ func GenerateDataPath(packageName string, nameVar string, rootPath string) (*byt
 	fp := bytes.NewBuffer([]byte{})
 	_, err := fp.WriteString(fmt.Sprintf("package %s\n\n", packageName))
 	if err != nil {
-		return nil, fmt.Errorf("error writing to output file: %v", err)
+		return nil, errors.New("error writing to output file: %v", err)
 	}
 
 	_, err = fp.WriteString("type GeneratedDataPath struct {\n\tData string\n\tPath string\n}\n\n")
 	if err != nil {
-		return nil, fmt.Errorf("error writing to output file: %v", err)
+		return nil, errors.New("error writing to output file: %v", err)
 	}
 
 	varsName, err := WalkRecordFileDataPath(fp, rootPath, "")
@@ -55,7 +56,7 @@ func GenerateDataPath(packageName string, nameVar string, rootPath string) (*byt
 
 	_, err = fmt.Fprintf(fp, "var %s = []GeneratedDataPath{\n", nameVar)
 	if err != nil {
-		return nil, fmt.Errorf("error writing to output file: %v", err)
+		return nil, errors.New("error writing to output file: %v", err)
 	}
 	for _, v := range varsName {
 		if _, err = fmt.Fprintf(fp, "\t%v,\n", v); err != nil {
@@ -64,7 +65,7 @@ func GenerateDataPath(packageName string, nameVar string, rootPath string) (*byt
 	}
 	_, err = fmt.Fprintf(fp, "}\n")
 	if err != nil {
-		return nil, fmt.Errorf("error writing to output file: %v", err)
+		return nil, errors.New("error writing to output file: %v", err)
 	}
 
 	return fp, nil
@@ -73,7 +74,7 @@ func GenerateDataPath(packageName string, nameVar string, rootPath string) (*byt
 func WalkRecordFileDataPath(fp *bytes.Buffer, rootPath, prefix string) ([]string, error) {
 	files, err := ioutil.ReadDir(rootPath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading directory %s: %v", rootPath, err)
+		return nil, errors.New("error reading directory %s: %v", rootPath, err)
 	}
 
 	varsName := make([]string, 0, len(files))
@@ -90,7 +91,7 @@ func WalkRecordFileDataPath(fp *bytes.Buffer, rootPath, prefix string) ([]string
 			if !stringutil.HasAnySuffix(file.Name(), ignoreFileExtensions...) {
 				fileContent, err := ioutil.ReadFile(filePath)
 				if err != nil {
-					return nil, fmt.Errorf("error reading file %s: %v", filePath, err)
+					return nil, errors.New("error reading file %s: %v", filePath, err)
 				}
 
 				dataPathVarName := strings.ReplaceAll(filepath.Join(prefix, file.Name()), "/", "_")
@@ -100,26 +101,26 @@ func WalkRecordFileDataPath(fp *bytes.Buffer, rootPath, prefix string) ([]string
 				varsName = append(varsName, dataPathVarName)
 				_, err = fmt.Fprintf(fp, "var %s = GeneratedDataPath{\n", dataPathVarName)
 				if err != nil {
-					return nil, fmt.Errorf("error writing to output file: %v", err)
+					return nil, errors.New("error writing to output file: %v", err)
 				}
 
 				filePath = strings.ReplaceAll(filepath.Join(prefix, file.Name()), `\`, "/")
 				_, err = fmt.Fprintf(fp, "\tPath: \"%s\",\n", filePath)
 				if err != nil {
-					return nil, fmt.Errorf("error writing to output file: %v", err)
+					return nil, errors.New("error writing to output file: %v", err)
 				}
 				// 避免文件内容中也有``字符
 				_, err = fmt.Fprintf(fp, "\tData: `%s`,\n", escapeBackticks(string(fileContent)))
 				if err != nil {
-					return nil, fmt.Errorf("error writing to output file: %v", err)
+					return nil, errors.New("error writing to output file: %v", err)
 				}
 				_, err = fmt.Fprintln(fp, "}")
 				if err != nil {
-					return nil, fmt.Errorf("error writing to output file: %v", err)
+					return nil, errors.New("error writing to output file: %v", err)
 				}
 				_, err = fmt.Fprintln(fp, "")
 				if err != nil {
-					return nil, fmt.Errorf("error writing to output file: %v", err)
+					return nil, errors.New("error writing to output file: %v", err)
 				}
 			}
 		}

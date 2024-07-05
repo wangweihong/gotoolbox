@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -35,7 +34,7 @@ import (
 )
 
 func doSomething(ctx context.Context) error {
-	return fmt.Errorf("an error occurred in ServiceC")
+	return errors.New("an error occurred in ServiceC")
 }
 
 func getStackTrace() []string {
@@ -199,7 +198,7 @@ func startHTTPTracing(serviceName string) (*sdktrace.TracerProvider, error) {
 		),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("creating new exporter: %w", err)
+		return nil, errors.Errorf("creating new exporter: %w", err)
 	}
 
 	// labels/tags/resources that are common to all traces.

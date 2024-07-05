@@ -1,12 +1,13 @@
 package debug
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 var (
@@ -53,12 +54,12 @@ func saveMemProf(dir string) error {
 	memProfFilePath := filepath.Join(dir, "mem.prof")
 	f, err := os.Create(memProfFilePath)
 	if err != nil {
-		return fmt.Errorf("create mem profile file %v error: %w", memProfFilePath, err)
+		return errors.Errorf("create mem profile file %v error: %w", memProfFilePath, err)
 	}
 	defer f.Close()
 	runtime.GC() // get up-to-date statistics
 	if err := pprof.WriteHeapProfile(f); err != nil {
-		return fmt.Errorf("could not write memory profile %v: %w ", memProfFilePath, err)
+		return errors.Errorf("could not write memory profile %v: %w ", memProfFilePath, err)
 	}
 	return nil
 }
@@ -68,12 +69,12 @@ func saveBlockProfile(dir string) error {
 	blockProfFilePath := filepath.Join(dir, "block.prof")
 	f, err := os.Create(blockProfFilePath)
 	if err != nil {
-		return fmt.Errorf("create block profile file %v error: %w", blockProfFilePath, err)
+		return errors.Errorf("create block profile file %v error: %w", blockProfFilePath, err)
 	}
 	defer f.Close()
 
 	if err := pprof.Lookup("block").WriteTo(f, 0); err != nil {
-		return fmt.Errorf("could not write block profile %v: %w", blockProfFilePath, err)
+		return errors.Errorf("could not write block profile %v: %w", blockProfFilePath, err)
 	}
 	return nil
 }
@@ -83,12 +84,12 @@ func saveGoroutineProfile(dir string) error {
 	goroutineProfFilePath := filepath.Join(dir, "goroutine.prof")
 	f, err := os.Create(goroutineProfFilePath)
 	if err != nil {
-		return fmt.Errorf("create goroutine profile file %v error: %w", goroutineProfFilePath, err)
+		return errors.Errorf("create goroutine profile file %v error: %w", goroutineProfFilePath, err)
 	}
 	defer f.Close()
 
 	if err := pprof.Lookup("goroutine").WriteTo(f, 0); err != nil {
-		return fmt.Errorf("could not write goroutine profile %v: %w ", goroutineProfFilePath, err)
+		return errors.Errorf("could not write goroutine profile %v: %w ", goroutineProfFilePath, err)
 	}
 	return nil
 }
@@ -108,7 +109,7 @@ func startCpuProf(dir string, timeout time.Duration) error {
 	cpuProfFilePath := filepath.Join(dir, "cpu.prof")
 	f, err := os.Create(cpuProfFilePath)
 	if err != nil {
-		return fmt.Errorf("create cpu profile file error: %w", err)
+		return errors.Errorf("create cpu profile file error: %w", err)
 	}
 
 	// 1. 启动后必须要显式调用pprof.StopCPUProfile(), 否则cpu profile一直在后台运行不会停止
@@ -117,7 +118,7 @@ func startCpuProf(dir string, timeout time.Duration) error {
 	// 4. 如果瞬间停止cpu profile, 很可能没有信息被剖析
 	// 5. StartCPUProfile不能多次调用, 已启用后再次调用会报错:cpu profiling already in use
 	if err := pprof.StartCPUProfile(f); err != nil {
-		return fmt.Errorf("can not start cpu profile, error:%w ", err)
+		return errors.Errorf("can not start cpu profile, error:%w ", err)
 	}
 	// close cpu profile after
 	go func() {

@@ -3,6 +3,7 @@ package errors
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"strings"
@@ -34,7 +35,7 @@ func (s *Status) Error() *status {
 		stack: callers(),
 		code:  s.Code,
 		cause: s.Cause,
-		err:   fmt.Errorf(s.Desc),
+		err:   errors.New(s.Desc),
 	}
 }
 
@@ -66,7 +67,7 @@ type status struct {
 func NewStatus(code int, msg string) error {
 	errStack := &status{
 		stack: callers(),
-		err:   fmt.Errorf(msg),
+		err:   errors.New(msg),
 		code:  code,
 	}
 

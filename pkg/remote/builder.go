@@ -1,13 +1,13 @@
 package remote
 
 import (
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/pkg/sftp"
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/google/uuid"
 
@@ -119,23 +119,23 @@ func (s *SSHBuilder) BuildSession() (*SSHSession, error) {
 	// Create a new SSH session
 	session, err := conn.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SSH session: %v", err)
+		return nil, errors.New("failed to create SSH session: %v", err)
 	}
 
 	// Setup session standard input/output
 	stdinPipe, err := session.StdinPipe()
 	if err != nil {
-		return nil, fmt.Errorf("unable to setup stdin for session: %v", err)
+		return nil, errors.New("unable to setup stdin for session: %v", err)
 	}
 
 	stdoutPipe, err := session.StdoutPipe()
 	if err != nil {
-		return nil, fmt.Errorf("unable to setup stdout for session: %v", err)
+		return nil, errors.New("unable to setup stdout for session: %v", err)
 	}
 
 	stderrPipe, err := session.StderrPipe()
 	if err != nil {
-		return nil, fmt.Errorf("unable to setup stderr for session: %v", err)
+		return nil, errors.New("unable to setup stderr for session: %v", err)
 	}
 
 	if s.ptyConfig == nil {
@@ -149,17 +149,17 @@ func (s *SSHBuilder) BuildSession() (*SSHSession, error) {
 		}
 
 		if err := session.RequestPty("xterm", 80, 40, modes); err != nil {
-			return nil, fmt.Errorf("request for pseudo terminal failed: %v", err)
+			return nil, errors.New("request for pseudo terminal failed: %v", err)
 		}
 	} else {
 		if err := session.RequestPty(s.ptyConfig.pty, s.ptyConfig.h, s.ptyConfig.w, s.ptyConfig.mode); err != nil {
-			return nil, fmt.Errorf("request for pseudo terminal failed: %v", err)
+			return nil, errors.New("request for pseudo terminal failed: %v", err)
 		}
 	}
 
 	// Start the shell
 	if err := session.Shell(); err != nil {
-		return nil, fmt.Errorf("failed to start shell: %v", err)
+		return nil, errors.New("failed to start shell: %v", err)
 	}
 
 	var timer *time.Timer
@@ -202,7 +202,7 @@ func (s *SSHBuilder) BuildCommand() (*SSHCommand, error) {
 	// Create a new SSH session
 	session, err := conn.NewSession()
 	if err != nil {
-		return nil, fmt.Errorf("failed to create SSH session: %v", err)
+		return nil, errors.New("failed to create SSH session: %v", err)
 	}
 
 	return &SSHCommand{

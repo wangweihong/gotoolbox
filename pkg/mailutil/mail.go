@@ -2,10 +2,11 @@ package mailutil
 
 import (
 	"crypto/tls"
-	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/netutil"
 
@@ -60,10 +61,10 @@ func (smtp *SMTPServerConfig) Validate() error {
 		strings.TrimSpace(smtp.SMTPPassword) == "" ||
 		strings.TrimSpace(smtp.SenderName) == "" ||
 		strings.TrimSpace(smtp.SenderMail) == "" {
-		return fmt.Errorf("invalid smtp config, required field is empty")
+		return errors.New("invalid smtp config, required field is empty")
 	}
 	if !netutil.IsValidPort(smtp.SMTPServerPort) {
-		return fmt.Errorf("invalid port:" + strconv.Itoa(smtp.SMTPServerPort))
+		return errors.New("invalid port:" + strconv.Itoa(smtp.SMTPServerPort))
 	}
 
 	return nil
@@ -73,21 +74,21 @@ func (smtp *SMTPServerConfig) Validate() error {
 // topic: 标题, 至多支持4096长度
 func (smtp *smtpSender) SendEmail(to /*收件人地址*/ []string, topic /*邮件标题*/, content /*邮件内容*/ string) error {
 	if len(to) == 0 {
-		return fmt.Errorf("must set receiver mail")
+		return errors.New("must set receiver mail")
 	}
 
 	for _, v := range to {
 		if !IsValidEmail(v) {
-			return fmt.Errorf("invalid reciever email:%v", v)
+			return errors.Errorf("invalid receiver email:%v", v)
 		}
 	}
 
 	if strings.TrimSpace(topic) == "" {
-		return fmt.Errorf("topic is empty")
+		return errors.New("topic is empty")
 	}
 
 	if strings.TrimSpace(content) == "" {
-		return fmt.Errorf("content is empty")
+		return errors.New("content is empty")
 	}
 
 	m := gomail.NewMessage()

@@ -2,10 +2,11 @@ package rate
 
 import (
 	"context"
-	"fmt"
 	"math"
 	"sync"
 	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 // Limit defines the maximum frequency of some events.
@@ -226,7 +227,7 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	lim.mu.Unlock()
 
 	if n > burst && limit != Inf {
-		return fmt.Errorf("rate: Wait(n=%d) exceeds limiter's burst %d", n, lim.burst)
+		return errors.Errorf("rate: Wait(n=%d) exceeds limiter's burst %d", n, lim.burst)
 	}
 	// Check if ctx is already canceled
 	select {
@@ -243,7 +244,7 @@ func (lim *Limiter) WaitN(ctx context.Context, n int) (err error) {
 	// Reserve
 	r := lim.reserveN(now, n, waitLimit)
 	if !r.ok {
-		return fmt.Errorf("rate: Wait(n=%d) would exceed context deadline", n)
+		return errors.Errorf("rate: Wait(n=%d) would exceed context deadline", n)
 	}
 	// Wait if necessary
 	delay := r.DelayFrom(now)

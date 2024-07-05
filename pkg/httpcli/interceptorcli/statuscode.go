@@ -2,8 +2,9 @@ package interceptorcli
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli"
 	"github.com/wangweihong/gotoolbox/pkg/log"
@@ -24,7 +25,7 @@ func StatusCodeInterceptor(name string, skipperFunc ...skipper.SkipperFunc) http
 		}
 
 		if rawResp.GetStatusCode() != http.StatusOK {
-			return rawResp, fmt.Errorf("status code not 200, is %v", rawResp.GetStatusCode())
+			return rawResp, errors.Errorf("status code not 200, is %v", rawResp.GetStatusCode())
 		}
 
 		return rawResp, nil
