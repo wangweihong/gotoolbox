@@ -28,13 +28,23 @@ func GoRoutine(ctx context.Context, fs ...func(ctx context.Context)) {
 	}
 }
 
+func GoRoutineCustomPanicCover(ctx context.Context, cover func(), fs ...func(ctx context.Context)) {
+	for i := range fs {
+		f := fs[i]
+		go func() {
+			defer PanicRecover(ctx, cover)
+			f(ctx)
+		}()
+	}
+}
+
 // ReallyCrash controls the behavior of HandleCrash and now defaults
 // true. It's still exposed so components can optionally set to false
 // to restore prior behavior.
 var ReallyCrash = true
 
 // PanicHandlers is a list of functions which will be invoked when a panic happens.
-var PanicHandlers = []func(interface{}){logPanic}
+var PanicHandlers = []func(any){logPanic}
 
 // HandleCrash simply catches a crash and logs an error. Meant to be called via
 // defer.  Additional context-specific handlers can be provided, and will be
@@ -42,7 +52,7 @@ var PanicHandlers = []func(interface{}){logPanic}
 // handlers and logging the panic message.
 //
 // E.g., you can provide one or more additional handlers for something like shutting down go routines gracefully.
-func HandleCrash(additionalHandlers ...func(interface{})) {
+func HandleCrash(additionalHandlers ...func(any)) {
 	if r := recover(); r != nil {
 		for _, fn := range PanicHandlers {
 			fn(r)
@@ -57,7 +67,7 @@ func HandleCrash(additionalHandlers ...func(interface{})) {
 	}
 }
 
-func logPanic(r interface{}) {
+func logPanic(r any) {
 	if r == http.ErrAbortHandler {
 		// honor the http.ErrAbortHandler sentinel panic value:
 		//   ErrAbortHandler is a sentinel panic value to abort a handler.

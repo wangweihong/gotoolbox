@@ -10,7 +10,7 @@ import (
 )
 
 func TraceInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli.Interceptor {
-	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client,
+	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply any, cc *httpcli.Client,
 		invoker httpcli.Invoker, opts ...httpcli.CallOption,
 	) (*httpcli.HttpResponse, error) {
 		if skipper.Skip(req.GetPath(), skipperFunc...) {

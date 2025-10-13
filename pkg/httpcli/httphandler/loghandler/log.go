@@ -170,7 +170,7 @@ func redactHeaders(headers http.Header) (processedHeaders []string) {
 // formatJSON will try to pretty-format a JSON body.
 // It will also mask known fields which contain sensitive information.
 func formatJSON(raw []byte) string {
-	var data map[string]interface{}
+	var data map[string]any
 
 	if len(raw) == 0 {
 		return ""

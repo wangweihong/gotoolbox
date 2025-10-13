@@ -1,255 +1,346 @@
-package errors_test
+package errors
 
 import (
-	"fmt"
+	"errors"
+	"io"
+	"reflect"
 	"testing"
-
-	"github.com/wangweihong/gotoolbox/pkg/errors"
-
-	. "github.com/smartystreets/goconvey/convey"
 )
 
-func example() error {
-	return errors.NewDesc(101, "error example")
-}
+const (
+	// Error codes below 1000 are reserved future use by the
+	// "github.com/bdlm/errors" package.
+	ConfigurationNotValid int = iota + 1000
+	ErrInvalidJSON
+	ErrEOF
+	ErrLoadConfigFailed
+)
 
-func TestErrorStack(t *testing.T) {
-	Convey("check errors function line number", t, func() {
-		Convey("WithStack error", func() {
-			e := errors.FromError(example())
-			So(e, ShouldNotBeNil)
-			So(len(e.StackInfo()), ShouldEqual, 1)
-			So(e.StackInfo()[0].Line, ShouldEqual, "13")
-
-			ue := errors.UpdateStack(e)
-			fe := errors.FromError(ue)
-			So(fe, ShouldNotBeNil)
-			So(len(fe.StackInfo()), ShouldEqual, 2)
-			So(fe.StackInfo()[0].Line, ShouldEqual, "13")
-			So(fe.StackInfo()[1].Line, ShouldEqual, "24")
-		})
-	})
-}
-
-func TestNewDesc(t *testing.T) {
-	Convey("NewDesc", t, func() {
-		Convey("unknown code", func() {
-			e := errors.NewDesc(8888888888888, "not exist code")
-			So(e.Code(), ShouldEqual, errors.Unknown().Code())
-			So(e.HTTPStatus(), ShouldEqual, errors.Unknown().HTTPStatus())
-			So(e.Message(), ShouldEqual, errors.Unknown().Message())
-			So(e.Description(), ShouldEqual, "not exist code")
-		})
-
-		Convey("exist", func() {
-			e := errors.NewDesc(101, "NOT")
-			So(e.Code(), ShouldEqual, e.Code())
-			So(e.HTTPStatus(), ShouldEqual, e.HTTPStatus())
-			So(e.Message(), ShouldEqual, e.Message())
-			So(e.Description(), ShouldEqual, "NOT")
-			So(e.Stack(), ShouldNotEqual, "")
-		})
-	})
+func init() {
+	Register(NewCoder(ConfigurationNotValid, 500, map[string]string{MessageLangCNKey: "配置错误", MessageLangENKey: "ConfigurationNotValid error"}))
+	Register(NewCoder(ErrInvalidJSON, 500, map[string]string{MessageLangCNKey: "非法JSON", MessageLangENKey: "Data is not valid JSON"}))
+	Register(NewCoder(ErrEOF, 500, map[string]string{MessageLangCNKey: "输入终止", MessageLangENKey: "End of input"}))
+	Register(NewCoder(ErrLoadConfigFailed, 500, map[string]string{MessageLangCNKey: "加载配置失败", MessageLangENKey: "Load configuration file failed"}))
 }
 
 func TestNew(t *testing.T) {
-	Convey("New", t, func() {
-		Convey("unknown code", func() {
-			e := errors.New(8888888888888, fmt.Errorf("myError"))
-			So(e.Code(), ShouldEqual, errors.Unknown().Code())
-			So(e.HTTPStatus(), ShouldEqual, errors.Unknown().HTTPStatus())
-			So(e.Message(), ShouldEqual, errors.Unknown().Message())
-			So(e.Description(), ShouldEqual, "myError")
-		})
+	tests := []struct {
+		err  string
+		want error
+	}{
+		{"", errors.New("")},
+		{"foo", errors.New("foo")},
+		{"foo", New("foo")},
+		{"string with format specifiers: %v", errors.New("string with format specifiers: %v")},
+	}
 
-		Convey("nil error", func() {
-			e := errors.New(101, nil)
-			So(e.Code(), ShouldEqual, e.Code())
-
-		})
-
-		Convey("exist", func() {
-			Convey("WithStack error", func() {
-				e1 := errors.NewDesc(100, "error1")
-				e2 := errors.New(101, e1)
-
-				So(e2.Code(), ShouldEqual, 101)
-				So(len(e2.StackInfo()), ShouldEqual, 2)
-			})
-
-			Convey("normal error", func() {
-				e := errors.New(101, fmt.Errorf("myError"))
-				So(e.Code(), ShouldEqual, 101)
-				So(e.HTTPStatus(), ShouldEqual, e.HTTPStatus())
-				So(e.Message(), ShouldEqual, e.Message())
-				So(e.Description(), ShouldEqual, "myError")
-				So(e.Stack(), ShouldNotEqual, "")
-			})
-		})
-	})
+	for _, tt := range tests {
+		got := New(tt.err)
+		if got.Error() != tt.want.Error() {
+			t.Errorf("New.Error(): got: %q, want %q", got, tt.want)
+		}
+	}
 }
 
-func TestFormat(t *testing.T) {
-	Convey("Format", t, func() {
-		Convey("%s", func() {
-			e := errors.NewDesc(101, "file not exist")
-			So(fmt.Sprintf("%s", e), ShouldEqual, "OpenFileError:file not exist")
-			So(fmt.Sprintf("%q", e), ShouldEqual, "\"OpenFileError:file not exist\"")
-			So(fmt.Sprintf("%v", e), ShouldEqual, "OpenFileError:file not exist")
-			//So(
-			//	fmt.Sprintf("%+v", e),
-			//	ShouldEqual,
-			// 	"OpenFileError:file not exist
-			// [host:127.0.0.1,pid:8536,module:testing,code:101,file:error_test.go,func:1,line:41]",
-			//)
-			So(
-				fmt.Sprintf("%#v", e),
-				ShouldEqual,
-				"{\"code\":101,\"desc\":\"file not exist\",\"message\":{\"MessageCN\":\"访问文件失败\",\"MessageEN\":\"OpenFileError\"}}",
-			)
-			//So(
-			//	fmt.Sprintf("%+#v", e),
-			//	ShouldEqual,
-			// 	"{\"code\":101,\"desc\":\"file not
-			// exist\",\"http\":200,\"message\":{\"cn\":\"访问文件失败\",\"en\":\"OpenFileError\"},\"stack\":[{\"host\":\"127.0.0.1\",\"pid\":\"8536\",\"module\":\"testing\",\"code\":\"101\",\"file_name\":\"error_test.go\",\"func_name\":\"1\",\"line\":\"41\"}]}",
-			//)
-		})
-	})
+func TestWrapNil(t *testing.T) {
+	got := Wrap(nil, "no error")
+	if got != nil {
+		t.Errorf("Wrap(nil, \"no error\"): got %#v, expected nil", got)
+	}
 }
 
-func TestFromError(t *testing.T) {
-	Convey("FormatError", t, func() {
-		Convey("error is WithStack error", func() {
-			e := errors.NewDesc(102, "some thing happen")
-			st := errors.FromError(e)
-			So(st, ShouldNotBeNil)
-			So(st.Code(), ShouldEqual, 102)
-			So(st.Error(), ShouldEqual, "ReadFileError:some thing happen")
-		})
+func TestWrap(t *testing.T) {
+	tests := []struct {
+		err     error
+		message string
+		want    string
+	}{
+		{io.EOF, "read error", "read error"},
+		{Wrap(io.EOF, "read error"), "client error", "client error"},
+	}
 
-		Convey("error is simple error", func() {
-			e := fmt.Errorf("i'm not WithStack error")
-			st := errors.FromError(e)
-			So(st, ShouldNotBeNil)
-			So(st.Code(), ShouldEqual, errors.Unknown().Code())
-			So(st.Description(), ShouldEqual, "i'm not WithStack error")
-			So(st.Error(), ShouldEqual, "unknown error code:i'm not WithStack error")
-		})
-
-		Convey("error is nil", func() {
-			var e error
-			st := errors.FromError(e)
-			So(st, ShouldBeNil)
-		})
-
-	})
+	for _, tt := range tests {
+		got := Wrap(tt.err, tt.message).Error()
+		if got != tt.want {
+			t.Errorf("Wrap(%v, %q): got: %v, want %v", tt.err, tt.message, got, tt.want)
+		}
+	}
 }
 
-func TestUpdateStack(t *testing.T) {
-	Convey("UpdateStack", t, func() {
-		Convey("error is WithStack error", func() {
-			e := errors.NewDesc(102, "some thing happen")
-			st := errors.UpdateStack(e)
-			ss := errors.FromError(st)
-			So(ss, ShouldNotBeNil)
-			So(ss.Code(), ShouldEqual, 102)
-			So(ss.Error(), ShouldEqual, "ReadFileError:some thing happen")
-			So(len(ss.Stack()), ShouldEqual, 2)
-		})
+type nilError struct{}
 
-		Convey("error is simple error", func() {
-			e := fmt.Errorf("i'm not WithStack error")
-			st := errors.UpdateStack(e)
-			ss := errors.FromError(st)
-			So(ss, ShouldNotBeNil)
-			So(ss.Code(), ShouldEqual, errors.Unknown().Code())
-			So(ss.Description(), ShouldEqual, "i'm not WithStack error")
-			So(ss.Error(), ShouldEqual, "unknown error code:i'm not WithStack error")
-			So(len(ss.Stack()), ShouldEqual, 2)
-		})
+func (nilError) Error() string { return "nil error" }
 
-		Convey("when error is nil", func() {
-			e := errors.UpdateStack(nil)
-			So(e, ShouldBeNil)
-			IsError := func(err error) (ok bool) {
-				if err == nil {
-					return true
-				}
-				return false
-			}
-			So(IsError(e), ShouldBeTrue)
-		})
-	})
+func TestCause(t *testing.T) {
+	x := New("error")
+	tests := []struct {
+		err  error
+		want error
+	}{{
+		// nil error is nil
+		err:  nil,
+		want: nil,
+	}, {
+		// explicit nil error is nil
+		err:  (error)(nil),
+		want: nil,
+	}, {
+		// typed nil is nil
+		err:  (*nilError)(nil),
+		want: (*nilError)(nil),
+	}, {
+		// uncaused error is unaffected
+		err:  io.EOF,
+		want: io.EOF,
+	}, {
+		// caused error returns cause
+		err:  Wrap(io.EOF, "ignored"),
+		want: io.EOF,
+	}, {
+		err:  x, // return from errors.New
+		want: x,
+	}, {
+		WithMessage(nil, "whoops"),
+		nil,
+	}, {
+		WithMessage(io.EOF, "whoops"),
+		io.EOF,
+	}, {
+		WithStack(nil),
+		nil,
+	}, {
+		WithStack(io.EOF),
+		io.EOF,
+	}}
+
+	for i, tt := range tests {
+		got := Cause(tt.err)
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("test %d: got %#v, want %#v", i+1, got, tt.want)
+		}
+	}
 }
 
-func TestIsCode(t *testing.T) {
-	Convey("isCode", t, func() {
-		e := errors.NewDesc(101, "error 1001")
-		So(errors.IsCode(e, 100), ShouldBeFalse)
-		So(errors.IsCode(e, 101), ShouldBeTrue)
-		So(errors.IsCode(e, 101222), ShouldBeFalse)
-	})
+func TestWrapfNil(t *testing.T) {
+	got := Wrapf(nil, "no error")
+	if got != nil {
+		t.Errorf("Wrapf(nil, \"no error\"): got %#v, expected nil", got)
+	}
 }
 
-type fakeModule struct {
-	name string
-	ip   string
-	pid  int
+func TestWrapf(t *testing.T) {
+	tests := []struct {
+		err     error
+		message string
+		want    string
+	}{
+		{io.EOF, "read error", "read error"},
+		{Wrapf(io.EOF, "read error without format specifiers"), "client error", "client error"},
+		{Wrapf(io.EOF, "read error with %d format specifier", 1), "client error", "client error"},
+	}
+
+	for _, tt := range tests {
+		got := Wrapf(tt.err, tt.message).Error()
+		if got != tt.want {
+			t.Errorf("Wrapf(%v, %q): got: %v, want %v", tt.err, tt.message, got, tt.want)
+		}
+	}
 }
 
-func (s fakeModule) PID() int {
-	return s.pid
+func TestErrorf(t *testing.T) {
+	tests := []struct {
+		err  error
+		want string
+	}{
+		{Errorf("read error without format specifiers"), "read error without format specifiers"},
+		{Errorf("read error with %d format specifier", 1), "read error with 1 format specifier"},
+	}
+
+	for _, tt := range tests {
+		got := tt.err.Error()
+		if got != tt.want {
+			t.Errorf("Errorf(%v): got: %q, want %q", tt.err, got, tt.want)
+		}
+	}
 }
 
-func (s fakeModule) IP() string {
-	return s.ip
+func TestWithStackNil(t *testing.T) {
+	got := WithStack(nil)
+	if got != nil {
+		t.Errorf("WithStack(nil): got %#v, expected nil", got)
+	}
 }
 
-func (s fakeModule) Name() string {
-	return s.name
+func TestWithStack(t *testing.T) {
+	tests := []struct {
+		err  error
+		want string
+	}{
+		{io.EOF, "EOF"},
+		{WithStack(io.EOF), "EOF"},
+	}
+
+	for _, tt := range tests {
+		got := WithStack(tt.err).Error()
+		if got != tt.want {
+			t.Errorf("WithStack(%v): got: %v, want %v", tt.err, got, tt.want)
+		}
+	}
 }
 
-func (s fakeModule) String() string {
-	return fmt.Sprintf("host:%s,pid:%d,module:%s", s.IP(), s.PID(), s.Name())
+func TestWithMessageNil(t *testing.T) {
+	got := WithMessage(nil, "no error")
+	if got != nil {
+		t.Errorf("WithMessage(nil, \"no error\"): got %#v, expected nil", got)
+	}
 }
 
-func init() {
-	errors.UpdateModuleInfo(&fakeModule{
-		name: "testing",
-		ip:   "127.0.0.1",
-		pid:  8536,
-	})
-	errors.MustRegister(errors.NewCoder(100, 200, map[string]string{
-		errors.MessageLangENKey: "WriteFileError",
-		errors.MessageLangCNKey: "写文件失败",
-	}))
-	errors.MustRegister(errors.NewCoder(101, 200, map[string]string{
-		errors.MessageLangENKey: "OpenFileError",
-		errors.MessageLangCNKey: "访问文件失败",
-	}))
-	errors.MustRegister(errors.NewCoder(102, 200, map[string]string{
-		errors.MessageLangENKey: "ReadFileError",
-		errors.MessageLangCNKey: "读文件失败",
-	}))
+func TestWithMessage(t *testing.T) {
+	tests := []struct {
+		err     error
+		message string
+		want    string
+	}{
+		{io.EOF, "read error", "read error"},
+		{WithMessage(io.EOF, "read error"), "client error", "client error"},
+	}
+
+	for _, tt := range tests {
+		got := WithMessage(tt.err, tt.message).Error()
+		if got != tt.want {
+			t.Errorf("WithMessage(%v, %q): got: %q, want %q", tt.err, tt.message, got, tt.want)
+		}
+	}
 }
 
-func TestFormatPrint(t *testing.T) {
-	Convey("Format", t, func() {
-		Convey("%s", func() {
-			//e := httperrors.NewDesc(101, "file not exist")
-			//fmt.Println(e.Error())
-			//fmt.Printf("%v\n", e)
-			//fmt.Printf("%+v\n", e)
-			//fmt.Printf("%+#v\n", e)
-			e2 := fmt.Errorf("my error")
-			e2 = errors.UpdateStack(e2)
-			e2 = errors.UpdateStack(e2)
-			e2 = errors.UpdateStack(e2)
-			e2 = errors.UpdateStack(e2)
-			fmt.Println(e2.Error())
-			fmt.Printf("%v\n", e2)
-			fmt.Printf("%+v\n", e2)
-			fmt.Printf("%+#v\n", e2)
-		})
-	})
+func TestWithMessagefNil(t *testing.T) {
+	got := WithMessagef(nil, "no error")
+	if got != nil {
+		t.Errorf("WithMessage(nil, \"no error\"): got %#v, expected nil", got)
+	}
+}
+
+func TestWithMessagef(t *testing.T) {
+	tests := []struct {
+		err     error
+		message string
+		want    string
+	}{
+		{io.EOF, "read error", "read error"},
+		{WithMessagef(io.EOF, "read error without format specifier"), "client error", "client error"},
+		{WithMessagef(io.EOF, "read error with %d format specifier", 1), "client error", "client error"},
+	}
+
+	for _, tt := range tests {
+		got := WithMessagef(tt.err, tt.message).Error()
+		if got != tt.want {
+			t.Errorf("WithMessage(%v, %q): got: %q, want %q", tt.err, tt.message, got, tt.want)
+		}
+	}
+}
+
+func TestWithCode(t *testing.T) {
+	tests := []struct {
+		code     int
+		message  string
+		wantType string
+		wantCode int
+	}{
+		{ConfigurationNotValid, "ConfigurationNotValid error", "*withCode", ConfigurationNotValid},
+	}
+
+	for _, tt := range tests {
+		got := WithCode(tt.code, tt.message)
+		err, ok := got.(*withCode)
+		if !ok {
+			t.Errorf("WithCode(%v, %q): error type got: %T, want %s", tt.code, tt.message, got, tt.wantType)
+		}
+
+		if err.code != tt.wantCode {
+			t.Errorf("WithCode(%v, %q): got: %v, want %v", tt.code, tt.message, err.code, tt.wantCode)
+		}
+	}
+}
+
+func TestWithCodef(t *testing.T) {
+	tests := []struct {
+		code       int
+		format     string
+		args       string
+		wantType   string
+		wantCode   int
+		wangString string
+	}{
+		{ConfigurationNotValid, "Configuration %s", "failed", "*withCode", ConfigurationNotValid, `ConfigurationNotValid error`},
+	}
+
+	for _, tt := range tests {
+		got := WithCode(tt.code, tt.format, tt.args)
+		err, ok := got.(*withCode)
+		if !ok {
+			t.Errorf("WithCode(%v, %q %q): error type got: %T, want %s", tt.code, tt.format, tt.args, got, tt.wantType)
+		}
+
+		if err.code != tt.wantCode {
+			t.Errorf("WithCode(%v, %q %q): got: %v, want %v", tt.code, tt.format, tt.args, err.code, tt.wantCode)
+		}
+
+		if got.Error() != tt.wangString {
+			t.Errorf("WithCode(%v, %q %q): got: %v, want %v", tt.code, tt.format, tt.args, got.Error(), tt.wangString)
+		}
+	}
+}
+
+// errors.New, etc values are not expected to be compared by value
+// but the change in errors#27 made them incomparable. Assert that
+// various kinds of errors have a functional equality operator, even
+// if the result of that equality is always false.
+func TestErrorEquality(t *testing.T) {
+	vals := []error{
+		nil,
+		io.EOF,
+		errors.New("EOF"),
+		New("EOF"),
+		Errorf("EOF"),
+		Wrap(io.EOF, "EOF"),
+		Wrapf(io.EOF, "EOF%d", 2),
+		WithMessage(nil, "whoops"),
+		WithMessage(io.EOF, "whoops"),
+		WithStack(io.EOF),
+		WithStack(nil),
+	}
+
+	for i := range vals {
+		for j := range vals {
+			_ = vals[i] == vals[j] // mustn't panic
+		}
+	}
+}
+
+func TestParseCoder(t *testing.T) {
+	tests := []struct {
+		err           error
+		wantHTTPCode  int
+		wantString    string
+		wantCode      int
+		wantReference string
+	}{
+		{errors.New("yes error"), 500, "An internal server error occurred", 1, "http://github.com/marmotedu/errors/README.md"},
+	}
+
+	for i, tt := range tests {
+		coder := ParseCoder(tt.err)
+		if coder.HTTPStatus() != tt.wantHTTPCode {
+			t.Errorf("TestCodeParse(%d): got %q, want: %q", i, coder.HTTPStatus(), tt.wantHTTPCode)
+		}
+
+		if coder.String() != tt.wantString {
+			t.Errorf("TestCodeParse(%d): got %q, want: %q", i, coder.String(), tt.wantString)
+		}
+
+		if coder.Code() != tt.wantCode {
+			t.Errorf("TestCodeParse(%d): got %q, want: %q", i, coder.Code(), tt.wantCode)
+		}
+	}
+
 }

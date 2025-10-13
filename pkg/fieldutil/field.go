@@ -11,7 +11,7 @@ const (
 type Fields []reflect.StructField
 
 // ParseStructFields 从结构体或者结构体指针(指针非空值)中获取其字段信息
-func ParseStructFields(s interface{}) Fields {
+func ParseStructFields(s any) Fields {
 	if s == nil {
 		return nil
 	}
@@ -61,7 +61,7 @@ type FieldValue struct {
 type FieldValues []FieldValue
 
 // ParseStructFieldValues 从结构体或者结构体指针(指针非空值)中获取其字段信息和值
-func ParseStructFieldValues(s interface{}) FieldValues {
+func ParseStructFieldValues(s any) FieldValues {
 	if s == nil {
 		return nil
 	}

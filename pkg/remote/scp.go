@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -20,19 +19,19 @@ type SSHFile struct {
 func (s *SSHFile) Upload(remote, local string) error {
 	localFile, err := os.Open(local)
 	if err != nil {
-		return errors.UpdateStack(err)
+		return errors.WithStack(err)
 	}
 	defer localFile.Close()
 
 	remoteFile, err := s.sftpClient.Create(remote)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to create remote file: %v", err))
+		return errors.Errorf("failed to create remote file: %v", err)
 	}
 	defer remoteFile.Close()
 
 	_, err = io.Copy(remoteFile, localFile)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to copy file: %v", err))
+		return errors.Errorf("failed to copy file: %v", err)
 	}
 	return nil
 }
@@ -41,19 +40,19 @@ func (s *SSHFile) Upload(remote, local string) error {
 func (s *SSHFile) Download(remote, local string) error {
 	remoteFile, err := s.sftpClient.Open(remote)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to create remote file: %v", err))
+		return errors.Errorf("failed to create remote file: %v", err)
 	}
 	defer remoteFile.Close()
 
 	localFile, err := os.Create(local)
 	if err != nil {
-		return errors.UpdateStack(err)
+		return errors.WithStack(err)
 	}
 	defer localFile.Close()
 
 	_, err = io.Copy(localFile, remoteFile)
 	if err != nil {
-		return errors.UpdateStack(fmt.Errorf("failed to copy file: %v", err))
+		return errors.Errorf("failed to copy file: %v", err)
 	}
 	return nil
 }
@@ -70,14 +69,14 @@ func (s *SSHFile) ListDirectory(remoteDir string) ([]os.FileInfo, error) {
 func (s *SSHFile) ReadFile(remoteFilePath string) (string, error) {
 	remoteFile, err := s.sftpClient.Open(remoteFilePath)
 	if err != nil {
-		return "", fmt.Errorf("failed to open remote file: %w", err)
+		return "", errors.Errorf("failed to open remote file: %w", err)
 	}
 	defer remoteFile.Close()
 
 	content := make([]byte, 1024)
 	n, err := remoteFile.Read(content)
 	if err != nil && err.Error() != "EOF" {
-		return "", fmt.Errorf("failed to read remote file: %w", err)
+		return "", errors.Errorf("failed to read remote file: %w", err)
 	}
 
 	return string(content[:n]), nil
@@ -86,7 +85,7 @@ func (s *SSHFile) ReadFile(remoteFilePath string) (string, error) {
 func (s *SSHFile) Close() error {
 	_ = s.sftpClient.Close()
 	if err := s.sshClient.Close(); err != nil {
-		return fmt.Errorf("failed to close SSH session: %v", err)
+		return errors.Errorf("failed to close SSH session: %v", err)
 	}
 	return nil
 }

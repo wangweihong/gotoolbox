@@ -2,7 +2,10 @@ package maputil
 
 import "github.com/wangweihong/gotoolbox/pkg/sets"
 
+// Deprecated: use generic function instead
 type StringStringMap map[string]string
+
+//TODO : lock
 
 func NewStringStringMap() StringStringMap {
 	nm := make(map[string]string)

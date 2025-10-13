@@ -72,10 +72,10 @@ func (f FilePart) Write(w *multipart.Writer, name string) error {
 }
 
 type MultiPart struct {
-	Content interface{}
+	Content any
 }
 
-func NewMultiPart(content interface{}) *MultiPart {
+func NewMultiPart(content any) *MultiPart {
 	return &MultiPart{
 		Content: content,
 	}

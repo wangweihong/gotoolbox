@@ -2,6 +2,7 @@ package httpcli
 
 import (
 	"encoding/base64"
+	"fmt"
 	"os"
 	"reflect"
 	"strings"
@@ -16,7 +17,7 @@ type HttpRequestBuilder struct {
 
 func NewHttpRequestBuilder() *HttpRequestBuilder {
 	httpRequest := &HttpRequest{
-		queryParams:          make(map[string]interface{}),
+		queryParams:          make(map[string]any),
 		headerParams:         make(map[string][]string),
 		pathParams:           make(map[string]string),
 		autoFilledPathParams: make(map[string]string),
@@ -64,12 +65,12 @@ func (builder *HttpRequestBuilder) WithMethod(method string) *HttpRequestBuilder
 	return builder
 }
 
-func (builder *HttpRequestBuilder) AddQueryParam(key string, value interface{}) *HttpRequestBuilder {
+func (builder *HttpRequestBuilder) AddQueryParam(key string, value any) *HttpRequestBuilder {
 	builder.httpRequest.queryParams[key] = value
 	return builder
 }
 
-func (builder *HttpRequestBuilder) AddQueryParamByObject(input interface{}) *HttpRequestBuilder {
+func (builder *HttpRequestBuilder) AddQueryParamByObject(input any) *HttpRequestBuilder {
 	if input == nil {
 		return builder
 	}
@@ -150,7 +151,96 @@ func (builder *HttpRequestBuilder) AddFormParam(key string, value def.FormData) 
 	return builder
 }
 
-func (builder *HttpRequestBuilder) WithBody(kind string, body interface{}) *HttpRequestBuilder {
+func (builder *HttpRequestBuilder) processForm(v reflect.Value, t reflect.Type) *HttpRequestBuilder {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	// avoid panic
+	if t.Kind() != reflect.Struct {
+		return builder
+	}
+
+	fieldNum := t.NumField()
+	for i := 0; i < fieldNum; i++ {
+		field := t.Field(i)
+		// 跳过未导出字段
+		if !field.IsExported() {
+			continue
+		}
+		fieldVal := v.Field(i)
+		// 处理嵌入结构体（匿名字段）
+		if field.Anonymous {
+			builder.processForm(fieldVal, field.Type)
+			continue
+		}
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" {
+			if jsonTag == "-" {
+				continue
+			}
+			fv := v.FieldByName(t.Field(i).Name)
+
+			if fv.IsZero() && strings.Contains(jsonTag, "omitempty") {
+				continue
+			}
+
+			if fv.Kind() == reflect.Slice || fv.Kind() == reflect.Map || fv.Kind() == reflect.Chan {
+				continue
+			}
+
+			switch d := fv.Interface().(type) {
+			case def.FormData:
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+			case *os.File:
+				fd := def.NewFilePart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+
+			default:
+				md := def.NewMultiPart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+			}
+		} else {
+			switch d := v.FieldByName(t.Field(i).Name).Interface().(type) {
+			case def.FormData:
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+			case *os.File:
+				fd := def.NewFilePart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+			default:
+				md := def.NewMultiPart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+			}
+		}
+	}
+	return builder
+}
+
+func (builder *HttpRequestBuilder) WithBody(kind string, body any) *HttpRequestBuilder {
+	// if body is multipart data, add to form
+	if kind == "multipart" {
+		v := reflect.ValueOf(body)
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
+
+		t := reflect.TypeOf(body)
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		builder.processForm(v, t)
+	} else {
+		builder.httpRequest.bodyData = body
+	}
+
+	return builder
+}
+
+func (builder *HttpRequestBuilder) WithBodyOld(kind string, body any) *HttpRequestBuilder {
 	// if body is multipart data, add to form
 	if kind == "multipart" {
 		v := reflect.ValueOf(body)
@@ -213,4 +303,27 @@ func (builder *HttpRequestBuilder) WithTimeout(t time.Duration) *HttpRequestBuil
 
 func (builder *HttpRequestBuilder) Build() *HttpRequest {
 	return builder.httpRequest.fillParamsInPath()
+}
+
+func (builder *HttpRequestBuilder) Debug() {
+	for k, v := range builder.httpRequest.queryParams {
+		fmt.Printf("query:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.headerParams {
+		fmt.Printf("header:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.pathParams {
+		fmt.Printf("path:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.pathParams {
+		fmt.Printf("autoFilledPathParams:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.formParams {
+		fmt.Printf("formParams:  %v:%v\n", k, v)
+	}
+
 }

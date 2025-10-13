@@ -4,27 +4,30 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path"
 	"path/filepath"
-	"runtime"
-	"strconv"
 	"strings"
-
-	"github.com/wangweihong/gotoolbox/pkg/sets"
 )
 
 var currentModule ModuleGetter
 
 type ModuleGetter interface {
 	PID() int
-	IP() string
+	Host() string
 	Name() string
 	String() string
 }
 
+func NewModuleGetter(module, host string, pid int) ModuleGetter {
+	return simpleModule{
+		name: module,
+		host: host,
+		pid:  pid,
+	}
+}
+
 type simpleModule struct {
 	name string
-	ip   string
+	host string
 	pid  int
 }
 
@@ -32,8 +35,8 @@ func (s simpleModule) PID() int {
 	return s.pid
 }
 
-func (s simpleModule) IP() string {
-	return s.ip
+func (s simpleModule) Host() string {
+	return s.host
 }
 
 func (s simpleModule) Name() string {
@@ -41,37 +44,45 @@ func (s simpleModule) Name() string {
 }
 
 func (s simpleModule) String() string {
-	return fmt.Sprintf("host:%s,pid:%d,module:%s", s.IP(), s.PID(), s.Name())
+	return fmt.Sprintf("host:%s,pid:%d,module:%s", s.host, s.pid, s.name)
 }
 
-func Caller() string {
-	pc, file, line, ok := runtime.Caller(2)
-	if !ok {
-		file = "???"
-		line = 0
+func GetModuleInfo() ServiceInfo {
+	return ServiceInfo{
+		Host: currentModule.Host(),
+		Pid:  currentModule.PID(),
+		Name: currentModule.Name(),
 	}
-	funcName := "???"
-	if fp := runtime.FuncForPC(pc); fp != nil {
-		funcName = fp.Name()
-	}
-
-	dir, filename := path.Split(file)
-	// show package name for error stack
-	if dir != "" {
-		parent := filepath.Base(dir)
-		filename = filepath.Join(parent, filename)
-	}
-
-	fileList := strings.Split(funcName, ".")
-	funcName = fileList[len(fileList)-1]
-	format := "file:" + filename + ",func:" + funcName + ",line:" + strconv.FormatInt(int64(line), 10)
-	return format
 }
 
 func UpdateModuleInfo(getter ModuleGetter) {
 	currentModule = getter
 }
 
+func ModuleString() string {
+	return currentModule.String()
+}
+
+//nolint:gochecknoinits
+func init() {
+	moduleIP := "127.0.0.1"
+
+	ipList, _ := getIPAddrs(false)
+	for _, ip := range ipList {
+		if ip != "127.0.0.1" {
+			moduleIP = ip
+			break
+		}
+	}
+
+	currentModule = &simpleModule{
+		name: filepath.Base(os.Args[0]),
+		host: moduleIP,
+		pid:  os.Getpid(),
+	}
+}
+
+// don't use netutil for avoid import cycle
 func getIPAddrs(wantIpv6 bool) ([]string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
@@ -80,7 +91,8 @@ func getIPAddrs(wantIpv6 bool) ([]string, error) {
 
 	ips := make([]string, 0)
 	for _, iface := range ifaces {
-		if sets.NewString(iface.Name).HasAnyPrefix("e", "br") {
+		if strings.HasPrefix(iface.Name, "e") ||
+			strings.HasPrefix(iface.Name, "br") {
 			addrs, err := iface.Addrs()
 			if err != nil {
 				continue
@@ -99,26 +111,4 @@ func getIPAddrs(wantIpv6 bool) ([]string, error) {
 	}
 
 	return ips, nil
-}
-
-func ModuleString() string {
-	return currentModule.String()
-}
-
-//nolint:gochecknoinits
-func init() {
-	moduleIP := "127.0.0.1"
-	ipList, _ := getIPAddrs(false)
-	for _, ip := range ipList {
-		if ip != "127.0.0.1" {
-			moduleIP = ip
-			break
-		}
-	}
-
-	currentModule = &simpleModule{
-		name: filepath.Base(os.Args[0]),
-		ip:   moduleIP,
-		pid:  os.Getpid(),
-	}
 }

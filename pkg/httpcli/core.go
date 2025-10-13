@@ -2,8 +2,8 @@ package httpcli
 
 import (
 	"context"
-	"fmt"
 	"net/http"
+	"net/http/cookiejar"
 	"time"
 
 	"github.com/wangweihong/gotoolbox/pkg/callerutil"
@@ -49,6 +49,21 @@ func NewClient(cfg *httpconfig.HttpConfig, options ...Option) (*Client, error) {
 		Timeout:   c.config.Timeout,
 	}
 
+	if c.config.RecordCookies {
+		jar, err := cookiejar.New(nil)
+		if err != nil {
+			return nil, err
+		}
+		c.conn.Jar = jar
+	}
+
+	if c.config.NoRedirect {
+		c.conn.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			// 返回错误以阻止重定向
+			return http.ErrUseLastResponse
+		}
+	}
+
 	return c, nil
 }
 
@@ -61,23 +76,19 @@ func (c *Client) Invoke(
 	*/
 	ctx context.Context,
 	req *HttpRequest,
-	arg, reply interface{},
+	arg, reply any,
 	opts ...CallOption,
 ) (*HttpResponse, error) {
 
-	var callerMsg string
 	var err error
 	var rawResp *HttpResponse
 
 	if logEnabled() {
-		file, line, fn := callerutil.CallerDepth(3)
-		callerMsg = fmt.Sprintf("%s:%s:%d", file, fn, line)
-
-		caller := map[string]interface{}{"caller": callerMsg}
-		debugLog(ctx, caller, "Client Invoke Called")
+		caller := map[string]any{"caller": callerutil.CallersDepth(20, 3).List()}
+		//debugLog(ctx, caller, "Client Invoke Called")
 		defer func() {
 			caller["err"] = errors.Message(err)
-			debugLog(ctx, caller, "Client Invoke Ended")
+			//	debugLog(ctx, caller, "Client Invoke Ended")
 		}()
 	}
 
@@ -102,19 +113,19 @@ func (c *Client) Invoke(
 			getChainUnaryInvoker(chainInterceptors, 0, invokeLogWrapper),
 			opts...)
 
-		return rawResp, errors.UpdateStack(err)
+		return rawResp, errors.WithStack(err)
 	}
 
 	rawResp, err = invokeLogWrapper(ctx, req, arg, reply, c, opts...)
 
-	return rawResp, errors.UpdateStack(err)
+	return rawResp, errors.WithStack(err)
 }
 
 func getChainUnaryInvoker(interceptors []Interceptor, curr int, finalInvoker Invoker) Invoker {
 	if curr == len(interceptors)-1 {
 		return finalInvoker
 	}
-	return func(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, opts ...CallOption) (*HttpResponse, error) {
+	return func(ctx context.Context, req *HttpRequest, arg, reply any, cc *Client, opts ...CallOption) (*HttpResponse, error) {
 		rawResp, err := interceptors[curr+1].Intercept(
 			ctx,
 			req,
@@ -127,14 +138,14 @@ func getChainUnaryInvoker(interceptors []Interceptor, curr int, finalInvoker Inv
 	}
 }
 
-type Invoker func(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, opt ...CallOption) (*HttpResponse, error)
+type Invoker func(ctx context.Context, req *HttpRequest, arg, reply any, cc *Client, opt ...CallOption) (*HttpResponse, error)
 
 // nolint: funlen,gocognit
 func invokeLogWrapper(
 	ctx context.Context,
 	req *HttpRequest,
-	arg interface{},
-	reply interface{},
+	arg any,
+	reply any,
 	c *Client,
 	opt ...CallOption,
 ) (*HttpResponse, error) {
@@ -144,15 +155,15 @@ func invokeLogWrapper(
 	debugCore(ctx, startTime, req, httpResp, arg, reply, err)
 	logInfoIf(ctx, "Core end")
 
-	return httpResp, errors.UpdateStack(err)
+	return httpResp, errors.WithStack(err)
 }
 
 // nolint: funlen,gocognit
 func invoke(
 	ctx context.Context,
 	req *HttpRequest,
-	arg interface{},
-	reply interface{},
+	arg any,
+	reply any,
 	c *Client,
 	opt ...CallOption,
 ) (*HttpResponse, error) {
@@ -172,22 +183,22 @@ func invoke(
 	// 转换成原生http请求
 	httpReq, err := req.ConvertRequestWithContext(ctx)
 	if err != nil {
-		return nil, errors.UpdateStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	// 请求前处理. 如一些场景需要对请求参数进行签名
 	if err := c.preRequestProcess(httpReq, ci); err != nil {
-		return nil, errors.UpdateStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	resp, err := c.conn.Do(httpReq)
 	if err != nil {
-		return nil, errors.UpdateStack(err)
+		return nil, errors.WithStack(err)
 	}
 
 	// 请求后处理
 	if err := c.postRequestProcess(resp, ci); err != nil {
-		return nil, err
+		return nil, errors.WithStack(err)
 	}
 
 	return NewHttpResponse(req, resp), nil
@@ -196,7 +207,7 @@ func invoke(
 func (c *Client) preRequestProcess(req *http.Request, info *callInfo) error {
 	if info != nil && info.httpRequestProcess != nil {
 		if _, err := info.httpRequestProcess(req); err != nil {
-			return err
+			return errors.Wrap(err, "process request before invoke fail")
 		}
 	}
 

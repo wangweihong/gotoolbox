@@ -2,6 +2,7 @@ package maputil
 
 import "github.com/wangweihong/gotoolbox/pkg/sets"
 
+// Deprecated: use generic function instead
 type StringBoolMap map[string]bool
 
 func (m StringBoolMap) DeepCopy() StringBoolMap {

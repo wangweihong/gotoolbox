@@ -15,11 +15,11 @@ func NewLogger(zapLogger *zap.SugaredLogger) logger {
 	return logger{zapLogger: zapLogger}
 }
 
-func (l logger) Info(msg string, args ...interface{}) {
+func (l logger) Info(msg string, args ...any) {
 	l.zapLogger.Infow(msg, args...)
 }
 
-func (l logger) Error(err error, msg string, args ...interface{}) {
+func (l logger) Error(err error, msg string, args ...any) {
 	l.zapLogger.Errorw(fmt.Sprintf(msg, args...), "error", err.Error())
 }
 

@@ -6,9 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/callerutil"
+
 	"github.com/wangweihong/gotoolbox/pkg/json"
 
-	"github.com/wangweihong/gotoolbox/pkg/callerutil"
 	"github.com/wangweihong/gotoolbox/pkg/maputil"
 )
 
@@ -30,8 +31,8 @@ func logInfoIf(ctx context.Context, msg string) {
 	}
 }
 
-func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply interface{}, err error) maputil.StringInterfaceMap {
-	fields := make(map[string]interface{})
+func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply any, err error) maputil.StringAnyMap {
+	fields := make(map[string]any)
 	fields["req_time_begin"] = start.Format("2006-01-02 15:04:05.000000")
 	fields["req_raw_url"] = req.GetPath()
 	fields["req_method"] = req.GetMethod()
@@ -56,6 +57,7 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 		if logHugeEnabled() {
 			fields["resp_body"] = rawResp.GetBody()
 			fields["resp_headers"] = json.ToString(rawResp.GetHeaders())
+			fields["caller"] = callerutil.CallersDepth(32, 4).List()
 		}
 	}
 
@@ -69,14 +71,9 @@ func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, re
 	return fields
 }
 
-func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply interface{}, err error) {
+func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply any, err error) {
 	if logEnabled() {
-		file, line, fn := callerutil.CallerDepth(4)
-		callerMsg := fmt.Sprintf("%s:%s:%d", file, fn, line)
-
 		fields := callEntry(start, req, rawResp, arg, reply, err)
-		fields["caller"] = callerMsg
-
 		simpleCallInfo := fmt.Sprintf(
 			"%v - [%s] %v %s  %s",
 			fields.Get("resp_status"),
@@ -89,14 +86,14 @@ func debugCore(ctx context.Context, start time.Time, req *HttpRequest, rawResp *
 	}
 }
 
-func debugLog(ctx context.Context, fields map[string]interface{}, msg string) {
+func debugLog(ctx context.Context, fields map[string]any, msg string) {
 	debugLogger.Info(ctx, fields, msg)
 }
 
 var debugLogger Logger = fmtLogger{}
 
 type Logger interface {
-	Info(context.Context, map[string]interface{}, string)
+	Info(context.Context, map[string]any, string)
 }
 
 func SetLogger(logger2 Logger) {
@@ -105,7 +102,7 @@ func SetLogger(logger2 Logger) {
 
 type fmtLogger struct{}
 
-func (fl fmtLogger) Info(ctx context.Context, fields map[string]interface{}, msg string) {
+func (fl fmtLogger) Info(ctx context.Context, fields map[string]any, msg string) {
 	fmt.Println(msg)
 	if fields != nil {
 		json.PrintStructObject(fields)

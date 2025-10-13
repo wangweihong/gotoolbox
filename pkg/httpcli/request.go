@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+
 	"github.com/wangweihong/gotoolbox/pkg/tls/httptls"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/def"
@@ -26,11 +28,11 @@ type HttpRequest struct {
 	path     string
 	method   string
 
-	queryParams  map[string]interface{}
+	queryParams  map[string]any
 	pathParams   map[string]string
 	headerParams http.Header
 	formParams   map[string]def.FormData
-	bodyData     interface{}
+	bodyData     any
 
 	autoFilledPathParams map[string]string
 	timeout              time.Duration
@@ -65,7 +67,7 @@ func (r *HttpRequest) GetPath() string {
 	return r.path
 }
 
-func (r *HttpRequest) GetQueryParams() map[string]interface{} {
+func (r *HttpRequest) GetQueryParams() map[string]any {
 	return r.queryParams
 }
 
@@ -89,7 +91,7 @@ func (r *HttpRequest) GetFullRequestAddress() string {
 	return req.URL.String()
 }
 
-func (r *HttpRequest) GetBodyData() interface{} {
+func (r *HttpRequest) GetBodyData() any {
 	return r.bodyData
 }
 
@@ -276,16 +278,11 @@ func (r *HttpRequest) InvokeWithContext(ctx context.Context, opts ...CallOption)
 		return nil, err
 	}
 
+	rt := http.DefaultTransport
 	tr := &http.Transport{}
 	if ci.httpTransport != nil {
 		tr = ci.httpTransport
 	}
-
-	c := http.Client{
-		Transport: tr,
-		Timeout:   ci.timeout,
-	}
-
 	if ci.TlsEnabled {
 		creds, err := buildCredentials(ci)
 		if err != nil {
@@ -294,6 +291,16 @@ func (r *HttpRequest) InvokeWithContext(ctx context.Context, opts ...CallOption)
 		tr.TLSClientConfig = creds
 	}
 	tr.Proxy = ci.HttpProxy
+	rt = tr
+
+	if ci.enableOTEL {
+		rt = otelhttp.NewTransport(tr)
+	}
+
+	c := http.Client{
+		Transport: rt,
+		Timeout:   ci.timeout,
+	}
 
 	resp, err := c.Do(httpReq)
 	if err != nil {

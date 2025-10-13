@@ -13,26 +13,27 @@ import (
 type OneWorkerSyncer struct {
 	period     time.Duration
 	working    bool
-	syncAction func(arg interface{}) error
+	syncAction func(arg any) error
 	syncResult *sequential.List
 
 	lock sync.RWMutex
 }
 
 func NewOneWorkerSyncer(
-	syncAction func(arg interface{}) error,
+	syncAction func(arg any) error,
 	internal time.Duration,
 	keepResultNum int,
 ) *OneWorkerSyncer {
+	if internal == 0 {
+		internal = 30 * time.Second
+	}
+
 	u := &OneWorkerSyncer{
 		period:     internal,
 		syncAction: syncAction,
 		syncResult: sequential.NewLimitSequentialList(keepResultNum),
 	}
 
-	if internal == 0 {
-		internal = 30 * time.Second
-	}
 	return u
 }
 
@@ -46,7 +47,7 @@ func (u *OneWorkerSyncer) Run(stop <-chan struct{}) {
 }
 
 // Trigger trigger syncer action.
-func (u *OneWorkerSyncer) Trigger(arg interface{}, auto bool) bool {
+func (u *OneWorkerSyncer) Trigger(arg any, auto bool) bool {
 	u.lock.Lock()
 	defer u.lock.Unlock()
 
@@ -58,7 +59,7 @@ func (u *OneWorkerSyncer) Trigger(arg interface{}, auto bool) bool {
 	return false
 }
 
-func (u *OneWorkerSyncer) processNextItem(auto bool, key interface{}) {
+func (u *OneWorkerSyncer) processNextItem(auto bool, key any) {
 	defer func() {
 		u.lock.Lock()
 		defer u.lock.Unlock()
@@ -75,7 +76,7 @@ func (u *OneWorkerSyncer) processNextItem(auto bool, key interface{}) {
 	u.finishRecord(index, err)
 }
 
-func (u *OneWorkerSyncer) handleErr(err error, key interface{}) {
+func (u *OneWorkerSyncer) handleErr(err error, key any) {
 	if err == nil {
 		return
 	}
@@ -93,7 +94,7 @@ func (u *OneWorkerSyncer) GetRecords() []SyncInfo {
 	return rs
 }
 
-func (u *OneWorkerSyncer) startRecord(auto bool, key interface{}) int {
+func (u *OneWorkerSyncer) startRecord(auto bool, key any) int {
 	u.lock.Lock()
 	defer u.lock.Unlock()
 

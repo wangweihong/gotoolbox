@@ -27,7 +27,7 @@ func TestEvery(t *testing.T) {
 	//{"slice": "[]string{\"a lll\"}"}
 	log.Info("", log.Every("slice", []string{"a lll"}))
 	//{"map": "map[string]interface {}{\"aaa\":123, \"name\":false, \"so\":\"bb\"}"}
-	log.Info("", log.Every("map", map[string]interface{}{"aaa": 123, "so": "bb", "name": false}))
+	log.Info("", log.Every("map", map[string]any{"aaa": 123, "so": "bb", "name": false}))
 	type Person struct {
 		Emails []string `mapstructure:"emails"`
 	}
@@ -111,7 +111,7 @@ func benchStartup() *MyStruct {
 	return data
 }
 
-func every(key string, val interface{}) log.Field {
+func every(key string, val any) log.Field {
 	str := fmt.Sprintf("%#v", val)
 	return log.Field{Key: key, Type: zapcore.StringType, String: str}
 }

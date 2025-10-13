@@ -13,12 +13,12 @@ func TestNewOneWorkerSyncer(t *testing.T) {
 	Convey("onework", t, func() {
 		SkipConvey("cronjob syncer", func() {
 			stop := make(chan struct{}, 0)
-			s := syncer.NewOneWorkerSyncer(func(arg interface{}) error {
+			s := syncer.NewOneWorkerSyncer(func(arg any) error {
 				time.Sleep(1 * time.Second)
 				return nil
 			}, 3*time.Second, 1)
 			s.Run(stop)
-			So(s.Trigger(false), ShouldBeTrue)
+			So(s.Trigger(nil, false), ShouldBeTrue)
 
 			go func() {
 				select {
@@ -30,17 +30,17 @@ func TestNewOneWorkerSyncer(t *testing.T) {
 		})
 
 		Convey("trigger syncer", func() {
-			s := syncer.NewOneWorkerSyncer(func(arg interface{}) error {
+			s := syncer.NewOneWorkerSyncer(func(arg any) error {
 				time.Sleep(100 * time.Millisecond)
 				return nil
 			}, 3*time.Second, 3)
-			So(s.Trigger(false), ShouldBeFalse)
+			So(s.Trigger(nil, false), ShouldBeFalse)
 			time.Sleep(300 * time.Millisecond)
-			So(s.Trigger(false), ShouldBeFalse)
+			So(s.Trigger(nil, false), ShouldBeFalse)
 			time.Sleep(300 * time.Millisecond)
-			So(s.Trigger(false), ShouldBeFalse)
+			So(s.Trigger(nil, false), ShouldBeFalse)
 			time.Sleep(300 * time.Millisecond)
-			So(s.Trigger(false), ShouldBeFalse)
+			So(s.Trigger(nil, false), ShouldBeFalse)
 			time.Sleep(300 * time.Millisecond)
 
 			So(len(s.GetRecords()), ShouldEqual, 3)

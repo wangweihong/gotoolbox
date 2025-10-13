@@ -1,10 +1,10 @@
 package syncer
 
-type Action func(arg interface{}) error
+type Action func(arg any) error
 
 type Service interface {
 	Run(stop <-chan struct{})
-	Trigger(arg interface{}, auto bool) bool
+	Trigger(arg any, auto bool) bool
 	GetRecords() []SyncInfo
 }
 

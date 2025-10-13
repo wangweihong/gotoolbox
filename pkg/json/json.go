@@ -24,7 +24,7 @@ var (
 	NewEncoder    = json.NewEncoder
 )
 
-func PrintStructObject(data interface{}) {
+func PrintStructObject(data any) {
 	output, err := json.MarshalIndent(data, "", "\t")
 	if err == nil {
 		fmt.Println(string(output))
@@ -32,6 +32,10 @@ func PrintStructObject(data interface{}) {
 		fmt.Println(err)
 	}
 }
+
+var (
+	PrintObject = PrintStructObject
+)
 
 // {"hello": "123"}
 //
@@ -48,7 +52,10 @@ func PrettyPrint(b []byte) {
 	fmt.Printf("%s\n", out.Bytes())
 }
 
-func ToString(obj interface{}) string {
+func ToString(obj any) string {
+	if obj == nil {
+		return ""
+	}
 	b, err := json.Marshal(obj)
 	if err != nil {
 		return ""
@@ -56,22 +63,28 @@ func ToString(obj interface{}) string {
 	return string(b)
 }
 
-func Encode(o interface{}) ([]byte, error) {
+func Encode(o any) ([]byte, error) {
 	return json.Marshal(o)
 }
 
-func Decode(y []byte, o interface{}) error {
+func Decode(y []byte, o any) error {
 	return json.Unmarshal(y, o)
 }
 
-func ShouldEncode(params interface{}) string {
+func ShouldEncode(params any) string {
 	b, _ := json.Marshal(params)
 	return string(b)
 }
 
-func ShouldDecode(data interface{}) map[string]interface{} {
-	b := ShouldEncode(data)
-	var d map[string]interface{}
+func ShouldDecode(b []byte) map[string]any {
+	var d map[string]any
+	_ = json.Unmarshal([]byte(b), &d)
+	return d
+}
+
+func ShouldMap(params any) map[string]any {
+	b := ShouldEncode(params)
+	var d map[string]any
 	_ = json.Unmarshal([]byte(b), &d)
 	return d
 }
@@ -122,7 +135,7 @@ func ShouldDecode(data interface{}) map[string]interface{} {
 //
 // source是已经转义好的字符串(并根据es的matche语法做了修改), 原生json marshal时会将source的转义字符
 // 都加上`\\`,从而导致es matche解析脚本失败。
-func RawMarshal(data map[string]interface{}) string {
+func RawMarshal(data map[string]any) string {
 	md := `{`
 	i, length := 0, len(data)
 	for k, v := range data {
@@ -145,4 +158,13 @@ func RawMarshal(data map[string]interface{}) string {
 	}
 	md += `}`
 	return md
+}
+
+func MapInterfaceDecode(d map[string]any, object any) error {
+	b, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	return json.Unmarshal(b, object)
 }

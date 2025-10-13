@@ -2,7 +2,10 @@ package maputil
 
 import "github.com/wangweihong/gotoolbox/pkg/sets"
 
+// Deprecated: use generic function instead
 type StringIntMap map[string]int
+
+//TODO : lock
 
 func (m StringIntMap) DeepCopy() StringIntMap {
 	o := make(map[string]int, len(m))
@@ -15,6 +18,18 @@ func (m StringIntMap) DeepCopy() StringIntMap {
 func (m StringIntMap) Init() StringIntMap {
 	if m == nil {
 		return make(map[string]int)
+	}
+	return m
+}
+
+func (m StringIntMap) AddKeys(keys ...string) StringIntMap {
+	if m == nil {
+		m = make(map[string]int)
+	}
+	for _, key := range keys {
+		if _, exist := m[key]; !exist {
+			m[key] = 0
+		}
 	}
 	return m
 }
@@ -115,4 +130,41 @@ func (m StringIntMap) Equal(m2 map[string]int) bool {
 		}
 	}
 	return true
+}
+
+// SetAndIncrementKey 如果键存在则增1，否则设置为1
+func (m StringIntMap) SetAndIncrementKey(key string) StringIntMap {
+	if m == nil {
+		m = make(map[string]int)
+	}
+	d, exist := m[key]
+	if !exist {
+		m[key] = 1
+		return m
+	}
+	m[key] = d + 1
+	return m
+}
+
+// SetAndIncrementKey 合并两个map的键.
+func (m StringIntMap) MergeMaps(a map[string]int) StringIntMap {
+	if m == nil {
+		m = make(map[string]int)
+	}
+	if a == nil {
+		return m
+	}
+
+	for key, _ := range a {
+		if _, exists := m[key]; !exists {
+			m[key] = 0
+		}
+	}
+
+	for key, _ := range m {
+		if _, exists := a[key]; !exists {
+			a[key] = 0
+		}
+	}
+	return m
 }

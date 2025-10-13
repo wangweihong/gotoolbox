@@ -1,9 +1,11 @@
 package netutil
 
 import (
-	"fmt"
 	"net"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+	"github.com/wangweihong/gotoolbox/pkg/stringutil"
 )
 
 func GetDefaultInterface() (*net.Interface, error) {
@@ -21,5 +23,34 @@ func GetDefaultInterface() (*net.Interface, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("no suitable network interface found")
+	return nil, errors.New("no suitable network interface found")
+}
+
+var interfacePrefix = []string{
+	"e",
+	"br",
+}
+
+func GetInterfaceAndIP() (string, net.IP, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", nil, err
+	}
+	for _, iface := range ifaces {
+		if stringutil.HasAnyPrefix(iface.Name, interfacePrefix...) {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				continue
+			}
+
+			for _, address := range addrs {
+				if ipnet, ok := address.(*net.IPNet); ok {
+					if p4 := ipnet.IP.To4(); len(p4) == net.IPv4len {
+						return iface.Name, ipnet.IP, nil
+					}
+				}
+			}
+		}
+	}
+	return "", nil, errors.New("cannot find interface with ip")
 }

@@ -28,9 +28,9 @@ func TestHttpRequestBuilder_AddQueryParamByObject(t *testing.T) {
 			WithTag: "tag1",
 			OmitTag: "",
 		}
-		//expect := make(map[string]interface{})
-		expect := make(map[string]interface{})
-		expect = map[string]interface{}{
+		//expect := make(map[string]any)
+		expect := make(map[string]any)
+		expect = map[string]any{
 			"String":   "name",
 			"Num":      123,
 			"Flag":     false,
@@ -58,9 +58,9 @@ func TestHttpRequestBuilder_AddQueryParamByObjectEmbedded(t *testing.T) {
 			ot := objType{
 				String: "name",
 			}
-			//expect := make(map[string]interface{})
-			expect := make(map[string]interface{})
-			expect = map[string]interface{}{
+			//expect := make(map[string]any)
+			expect := make(map[string]any)
+			expect = map[string]any{
 				"String":    "name",
 				"page_num":  0,
 				"page_size": 0,
@@ -76,9 +76,9 @@ func TestHttpRequestBuilder_AddQueryParamByObjectEmbedded(t *testing.T) {
 					PageSize: 3,
 				},
 			}
-			//expect := make(map[string]interface{})
-			expect := make(map[string]interface{})
-			expect = map[string]interface{}{
+			//expect := make(map[string]any)
+			expect := make(map[string]any)
+			expect = map[string]any{
 				"String":    "name",
 				"page_num":  1,
 				"page_size": 3,

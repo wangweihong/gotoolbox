@@ -28,7 +28,7 @@ func TestWithFields(t *testing.T) {
 	var ctx = context.Background()
 	Convey("TestWithFields", t, func() {
 		log.F(ctx).Info("raw")
-		f := make(map[string]interface{})
+		f := make(map[string]any)
 		f["a"] = "b"
 
 		child := log.WithFields(ctx, f)
@@ -45,11 +45,11 @@ func TestWithFields(t *testing.T) {
 
 		So(f1, ShouldResemble, f2)
 
-		f1m := f1.(map[string]interface{})
+		f1m := f1.(map[string]any)
 		So(f1m["c"], ShouldBeNil)
 
 		child3 := log.WithFields(ctx, f)
-		fm2 := make(map[string]interface{})
+		fm2 := make(map[string]any)
 		fm2["a"] = "c"
 		child4 := log.WithFields(ctx, fm2)
 
@@ -57,4 +57,16 @@ func TestWithFields(t *testing.T) {
 		log.F(child4).Info("")
 
 	})
+}
+
+func sliceContent[T any](s []T, end int) []T {
+	if len(s) > end {
+		return s[:end]
+	}
+	return s
+}
+
+func TestAA(t *testing.T) {
+	s := []int{1,2}
+	t.Log(sliceContent(s,3))
 }

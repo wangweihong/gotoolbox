@@ -123,3 +123,12 @@ func TestIntSlice_MoveAfterIf(t *testing.T) {
 		So(sliceutil.IntSlice([]int{10, 11, 23}).MoveAfter(condition), ShouldResemble, []int{10, 23, 11})
 	})
 }
+
+func TestIntSlice_MergeDifferentElementsFromEnd(t *testing.T) {
+	Convey("MergeDifferentElementsFromEnd", t, func() {
+		So(sliceutil.NewIntSlice(1, 2, 3).MergeDifferentElementsFromEnd([]int{4, 2, 3}), ShouldResemble, sliceutil.IntSlice{1, 4, 2, 3})
+		So(sliceutil.NewIntSlice(1, 2, 3).MergeDifferentElementsFromEnd([]int{4, 1, 2, 3}), ShouldResemble, sliceutil.IntSlice{4, 1, 2, 3})
+		So(sliceutil.NewIntSlice(5, 4, 1, 2, 3).MergeDifferentElementsFromEnd([]int{1, 2, 3}), ShouldResemble, sliceutil.IntSlice{5, 4, 1, 2, 3})
+		So(sliceutil.NewIntSlice(5, 4, 1, 2, 3).MergeDifferentElementsFromEnd([]int{7, 1, 2, 3}), ShouldResemble, sliceutil.IntSlice{5, 4, 7, 1, 2, 3})
+	})
+}

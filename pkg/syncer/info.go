@@ -20,10 +20,10 @@ type SyncInfo struct {
 	Fail    bool
 	Message string
 	// record trigger
-	Key interface{}
+	Key any
 }
 
-func NewSyncInfo(auto bool, key interface{}) *SyncInfo {
+func NewSyncInfo(auto bool, key any) *SyncInfo {
 	return &SyncInfo{
 		StartTime: time.Now(),
 		EndTime:   nil,

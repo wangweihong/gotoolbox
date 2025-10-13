@@ -1,139 +1,329 @@
-package httpcli_test
+package httpcli
 
 import (
-	"context"
+	"encoding/base64"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/http/httptest"
 	"os"
-	"testing"
+	"reflect"
+	"strings"
+	"time"
 
-	"github.com/wangweihong/gotoolbox/pkg/log"
-
-	"github.com/wangweihong/gotoolbox/pkg/tracectx"
-
-	"github.com/wangweihong/gotoolbox/pkg/maputil"
-
-	. "github.com/smartystreets/goconvey/convey"
-
-	"github.com/wangweihong/gotoolbox/pkg/httpcli"
+	"github.com/wangweihong/gotoolbox/pkg/httpcli/def"
 )
 
-var (
-	inter1 = httpcli.NewInterceptor("inter1", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
-		req.Builder().AddQueryParam("inter1", "aaaa").Build()
+type HttpRequestBuilder struct {
+	httpRequest *HttpRequest
+}
 
-		resp, err := invoker(ctx, req, arg, reply, cc, opts...)
-		if err != nil {
-			return resp, err
+func NewHttpRequestBuilder() *HttpRequestBuilder {
+	httpRequest := &HttpRequest{
+		queryParams:          make(map[string]any),
+		headerParams:         make(map[string][]string),
+		pathParams:           make(map[string]string),
+		autoFilledPathParams: make(map[string]string),
+		formParams:           make(map[string]def.FormData),
+	}
+	httpRequestBuilder := &HttpRequestBuilder{
+		httpRequest: httpRequest,
+	}
+	return httpRequestBuilder
+}
+
+func (builder *HttpRequestBuilder) WithEndpoint(endpoint string) *HttpRequestBuilder {
+	// 如果endpoint不带有协议,在转换成http request时, endpoint会被当作path存在url.path,而不是url.Host.
+	// fillPath会替换掉endpoint.
+	if !strings.HasPrefix(endpoint, "http://") && !strings.HasPrefix(endpoint, "https://") {
+		endpoint = "http://" + endpoint
+	}
+	builder.httpRequest.endpoint = endpoint
+	return builder
+}
+
+func (builder *HttpRequestBuilder) WithPath(path string) *HttpRequestBuilder {
+	builder.httpRequest.path = path
+	return builder
+}
+
+func (builder *HttpRequestBuilder) POST() *HttpRequestBuilder {
+	return builder.WithMethod("POST")
+}
+
+func (builder *HttpRequestBuilder) GET() *HttpRequestBuilder {
+	return builder.WithMethod("GET")
+}
+
+func (builder *HttpRequestBuilder) PUT() *HttpRequestBuilder {
+	return builder.WithMethod("PUT")
+}
+
+func (builder *HttpRequestBuilder) DELETE() *HttpRequestBuilder {
+	return builder.WithMethod("DELETE")
+}
+
+func (builder *HttpRequestBuilder) WithMethod(method string) *HttpRequestBuilder {
+	builder.httpRequest.method = method
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddQueryParam(key string, value any) *HttpRequestBuilder {
+	builder.httpRequest.queryParams[key] = value
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddQueryParamByObject(input any) *HttpRequestBuilder {
+	if input == nil {
+		return builder
+	}
+
+	v := reflect.ValueOf(input)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	t := v.Type()
+	if t.Kind() != reflect.Struct {
+		return builder
+	}
+	for i := 0; i < v.NumField(); i++ {
+		fieldValue := v.Field(i)
+		fieldType := t.Field(i)
+
+		if !fieldType.IsExported() {
+			continue
 		}
-		resp.Response.Header.Set("inter1", "bbbb")
-		return resp, err
-	})
-	inter2 = httpcli.NewInterceptor("inter2", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
-		req.Builder().AddQueryParam("inter2", "bbbb").Build()
 
-		ctx = context.WithValue(ctx, "inter2", "bbbb")
-		resp, err := invoker(ctx, req, arg, reply, cc, opts...)
-		if err != nil {
-			return resp, err
-		}
-		resp.Response.Header.Set("inter2", "bbbb")
-		return resp, err
-	})
-	inter3 = httpcli.NewInterceptor("errorInter", func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client, invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
-		ctx = context.WithValue(ctx, "inter2", "bbbb")
-		resp, err := invoker(ctx, req, arg, reply, cc, opts...)
-		if err != nil {
-			return resp, err
-		}
-		return resp, fmt.Errorf("intercetpor error")
-	})
-)
-
-func TestClient_Interceptor(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Body != nil {
-			defer r.Body.Close()
-
-			b, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+		// 如果字段是匿名结构体
+		if fieldType.Type.Kind() == reflect.Struct && fieldType.Anonymous {
+			fieldBuilder := NewHttpRequestBuilder().AddQueryParamByObject(fieldValue.Interface())
+			for k, v := range fieldBuilder.httpRequest.queryParams {
+				builder.httpRequest.queryParams[k] = v
 			}
-			if _, err := w.Write(b); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
+			continue
+		}
+
+		// 忽略空指针
+		if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
+			continue
+		}
+		key := fieldType.Name
+		jsonTag := fieldType.Tag.Get("json")
+		if jsonTag != "" {
+			if fieldValue.IsZero() && strings.Contains(jsonTag, ",omitempty") {
+				continue
+			}
+			key = strings.TrimPrefix(jsonTag, ",omitempty")
+		}
+
+		builder.httpRequest.queryParams[key] = fieldValue.Interface()
+	}
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddPathParam(key string, value string) *HttpRequestBuilder {
+	builder.httpRequest.pathParams[key] = value
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddAutoFilledPathParam(key string, value string) *HttpRequestBuilder {
+	builder.httpRequest.autoFilledPathParams[key] = value
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddHeaderParam(key string, value string) *HttpRequestBuilder {
+	builder.httpRequest.headerParams.Add(key, value)
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddBasicAuthHeaderParam(user string, password string) *HttpRequestBuilder {
+	auth := user + ":" + password
+	authEncoded := base64.StdEncoding.EncodeToString([]byte(auth))
+	builder.AddHeaderParam("Authorization", "Basic "+authEncoded)
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddTokenAuthHeaderParam(token string) *HttpRequestBuilder {
+	builder.AddHeaderParam("Authorization", "Bearer "+token)
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddFormParam(key string, value def.FormData) *HttpRequestBuilder {
+	builder.httpRequest.formParams[key] = value
+	return builder
+}
+
+func (builder *HttpRequestBuilder) processForm(v reflect.Value, t reflect.Type) *HttpRequestBuilder {
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	if t.Kind() == reflect.Ptr {
+		t = t.Elem()
+	}
+
+	// avoid panic
+	if t.Kind() != reflect.Struct {
+		return builder
+	}
+
+	fieldNum := t.NumField()
+	for i := 0; i < fieldNum; i++ {
+		field := t.Field(i)
+		// 跳过未导出字段
+		if !field.IsExported() {
+			continue
+		}
+		fieldVal := v.Field(i)
+		// 处理嵌入结构体（匿名字段）
+		if field.Anonymous {
+			builder.processForm(fieldVal, field.Type)
+			continue
+		}
+		jsonTag := field.Tag.Get("json")
+		if jsonTag != "" {
+			if jsonTag == "-" {
+				continue
+			}
+			fv := v.FieldByName(t.Field(i).Name)
+
+			if fv.IsZero() && strings.Contains(jsonTag, "omitempty") {
+				continue
+			}
+
+			if fv.Kind() == reflect.Slice || fv.Kind() == reflect.Map || fv.Kind() == reflect.Chan {
+				continue
+			}
+
+			switch d := fv.Interface().(type) {
+			case def.FormData:
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+			case *os.File:
+				fd := def.NewFilePart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+
+			default:
+				md := def.NewMultiPart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+			}
+		} else {
+			switch d := v.FieldByName(t.Field(i).Name).Interface().(type) {
+			case def.FormData:
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+			case *os.File:
+				fd := def.NewFilePart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+			default:
+				md := def.NewMultiPart(d)
+				builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
 			}
 		}
-	}))
-	defer server.Close()
+	}
+	return builder
+}
 
-	Convey("拦截器", t, func() {
-		SkipConvey("拦截器添加查询参数，并修改返回头部", func() {
+func (builder *HttpRequestBuilder) WithBody(kind string, body any) *HttpRequestBuilder {
+	// if body is multipart data, add to form
+	if kind == "multipart" {
+		v := reflect.ValueOf(body)
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
 
-			c, err := httpcli.NewClient(nil, httpcli.WithIntercepts(inter1, inter2))
-			So(err, ShouldBeNil)
-			ctx := context.Background()
+		t := reflect.TypeOf(body)
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
+		builder.processForm(v, t)
+	} else {
+		builder.httpRequest.bodyData = body
+	}
 
-			os.Setenv("HTTPCLI_DEBUG", "1")
-			os.Setenv("HTTPCLI_DEBUG_HUGE", "1")
+	return builder
+}
 
-			req := httpcli.NewHttpRequestBuilder().
-				AddHeaderParam(tracectx.XRequestIDKey, tracectx.NewTraceID()).
-				WithEndpoint(server.URL).
-				WithMethod("GET").
-				WithPath("/version").
-				Build()
-			resp, err := c.Invoke(ctx, req, nil, nil)
-			So(err, ShouldBeNil)
-			So(resp.Response.StatusCode, ShouldEqual, 200)
-			So(resp.Response.Header.Get("inter1"), ShouldEqual, "bbbb")
-			So(resp.Response.Header.Get("inter2"), ShouldEqual, "bbbb")
-			So(maputil.StringInterfaceMap(resp.Request.GetQueryParams()).HasKeyAndValue("inter2", "bbbb"), ShouldBeTrue)
-			So(maputil.StringInterfaceMap(resp.Request.GetQueryParams()).HasKeyAndValue("inter1", "aaaa"), ShouldBeTrue)
-		})
+func (builder *HttpRequestBuilder) WithBodyOld(kind string, body any) *HttpRequestBuilder {
+	// if body is multipart data, add to form
+	if kind == "multipart" {
+		v := reflect.ValueOf(body)
+		if v.Kind() == reflect.Ptr {
+			v = v.Elem()
+		}
 
-		Convey("出错拦截器", func() {
+		t := reflect.TypeOf(body)
+		if t.Kind() == reflect.Ptr {
+			t = t.Elem()
+		}
 
-			c, err := httpcli.NewClient(nil, httpcli.WithIntercepts(inter3))
-			So(err, ShouldBeNil)
-			ctx := context.Background()
+		// avoid panic
+		if t.Kind() != reflect.Struct {
+			return builder
+		}
 
-			os.Setenv("HTTPCLI_DEBUG", "1")
-			os.Setenv("HTTPCLI_DEBUG_HUGE", "1")
+		fieldNum := t.NumField()
+		for i := 0; i < fieldNum; i++ {
+			jsonTag := t.Field(i).Tag.Get("json")
+			if jsonTag != "" {
+				if v.FieldByName(t.Field(i).Name).IsZero() && strings.Contains(jsonTag, "omitempty") {
+					continue
+				}
 
-			req := httpcli.NewHttpRequestBuilder().
-				AddHeaderParam(tracectx.XRequestIDKey, tracectx.NewTraceID()).
-				WithEndpoint(server.URL).
-				WithMethod("GET").
-				WithPath("/version").
-				Build()
-			resp, err := c.Invoke(ctx, req, nil, nil)
-			So(err, ShouldNotBeNil)
-			So(resp, ShouldNotBeNil)
-			So(resp.Response.StatusCode, ShouldEqual, 200)
-		})
+				switch d := v.FieldByName(t.Field(i).Name).Interface().(type) {
+				case def.FormData:
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+				case *os.File:
+					fd := def.NewFilePart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+				default:
+					md := def.NewMultiPart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+				}
+			} else {
+				switch d := v.FieldByName(t.Field(i).Name).Interface().(type) {
+				case def.FormData:
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], d)
+				case *os.File:
+					fd := def.NewFilePart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], fd)
+				default:
+					md := def.NewMultiPart(d)
+					builder.AddFormParam(strings.Split(jsonTag, ",")[0], md)
+				}
+			}
+		}
+	} else {
+		builder.httpRequest.bodyData = body
+	}
 
-		SkipConvey("无拦截器", func() {
+	return builder
+}
 
-			c, err := httpcli.NewClient(nil)
-			So(err, ShouldBeNil)
-			ctx := context.Background()
+func (builder *HttpRequestBuilder) WithTimeout(t time.Duration) *HttpRequestBuilder {
+	builder.httpRequest.timeout = t
+	return builder
+}
 
-			os.Setenv("HTTPCLI_DEBUG", "1")
-			os.Setenv("HTTPCLI_DEBUG_HUGE", "1")
-			ctx = context.WithValue(ctx, log.KeyRequestID, tracectx.NewTraceID())
+func (builder *HttpRequestBuilder) Build() *HttpRequest {
+	return builder.httpRequest.fillParamsInPath()
+}
 
-			req := httpcli.NewHttpRequestBuilder().
-				WithEndpoint(server.URL).
-				WithMethod("GET").
-				WithPath("/version").
-				Build()
-			resp, err := c.Invoke(ctx, req, nil, nil)
-			So(err, ShouldBeNil)
-			So(resp.Response.StatusCode, ShouldEqual, 200)
-		})
-	})
+func (builder *HttpRequestBuilder) Debug() {
+	for k, v := range builder.httpRequest.queryParams {
+		fmt.Printf("query:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.headerParams {
+		fmt.Printf("header:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.pathParams {
+		fmt.Printf("path:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.pathParams {
+		fmt.Printf("autoFilledPathParams:  %v:%v\n", k, v)
+	}
+	fmt.Println("---------------------------")
+	for k, v := range builder.httpRequest.formParams {
+		fmt.Printf("formParams:  %v:%v\n", k, v)
+	}
+
 }
