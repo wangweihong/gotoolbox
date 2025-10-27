@@ -1,10 +1,11 @@
 package timeutil_test
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/wangweihong/gotoolbox/pkg/timeutil"
 	"testing"
 	"time"
+
+	. "github.com/smartystreets/goconvey/convey"
+	"github.com/wangweihong/gotoolbox/pkg/timeutil"
 )
 
 func TestGetLunarSolarTime(t *testing.T) {

@@ -28,7 +28,6 @@ type Extractor interface {
 	ExtractTarGZDirectory(archivePath, targetDir, destPath string) error
 }
 
-
 func NewExtractor(fileName string) Extractor {
 	if stringutil.HasAnySuffix(fileName, ".tar.gz", ".tgz") {
 		return &TarExtractor{}

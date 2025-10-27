@@ -196,3 +196,35 @@ func SliceContent[T any](s []T, end int) []T {
 	}
 	return s
 }
+
+func ZeroCount[T comparable](s []T) int {
+	var zero T
+	if len(s) == 0 {
+		return 0
+	}
+	var count int
+	for _, v := range s {
+		if zero == v {
+			count++
+		}
+	}
+	return count
+}
+
+func NewPointerSlice[T any](ts []T) []*T {
+	pts := make([]*T, 0, len(ts))
+	for i := range ts {
+		pts = append(pts, &ts[i])
+	}
+	return pts
+}
+
+func CopyIf[T any](slice []T, condition func(o T) bool) []T {
+	ds := make([]T, 0, len(slice))
+	for _, v := range slice {
+		if condition(v) {
+			ds = append(ds, v)
+		}
+	}
+	return ds
+}

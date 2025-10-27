@@ -54,7 +54,7 @@ func TestFileProcessor_Parse(t *testing.T) {
 			FilePath: "./testdata/haproxy.yaml",
 		}
 		data.TemplatePath = ""
-		data.Context = maputil.NewStringAnyMap().
+		data.Context = maputil.NewStringAny().
 			Set("HaproxyPort", 8443).
 			Set("ServerIPs", []string{"192.168.0.1", "192.168.0.2", "192.168.0.3"}).
 			Set("ServerPort", "6443").
@@ -76,7 +76,7 @@ func TestDirectoryProcessor_Parse(t *testing.T) {
 			TemplateDir:     "./testdata/template/calico",
 			LocateParsedDir: "./testdata/generated/calico",
 		}
-		data.Context = maputil.NewStringAnyMap().
+		data.Context = maputil.NewStringAny().
 			Set("ImageRepository", "example.io")
 
 		err := data.LocateToDisk().Error()
@@ -170,7 +170,7 @@ type Config struct {
 func TestTemplateRendering(t *testing.T) {
 	// 模拟输入数据
 	data := Config{
-		RegistrySkipVerify: true,              // 模拟不跳过验证
+		RegistrySkipVerify: true,               // 模拟不跳过验证
 		RegistryCAPath:     "/path/to/ca.crt",  // 模拟CA路径
 		RegistryAddress:    "example.com",      // 模拟Registry地址
 		RegistryAuth:       "dGVzdDpzZWNyZXQ=", // 模拟Base64编码后的Basic Auth（"test:secret"的Base64编码）

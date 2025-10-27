@@ -330,3 +330,12 @@ func SubStringNums(origin string, sub string) int {
 
 	return len(strings.Split(origin, sub)) - 1
 }
+
+func FirstSet(strs ...string) string {
+	for _, str := range strs {
+		if str != "" {
+			return str
+		}
+	}
+	return ""
+}

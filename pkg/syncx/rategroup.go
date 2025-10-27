@@ -37,7 +37,8 @@ func (r *RateGroupResult) MarshalJSON() ([]byte, error) {
 }
 
 func newUUID() string {
-	return uuid.NewUUID().String()
+	uid := uuid.New()
+	return uid.String()
 }
 
 func NewRateLimitGroup(rate int) *RateLimitGroup {

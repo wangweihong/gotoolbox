@@ -20,7 +20,8 @@ type callInfo struct {
 	ClientKeyData    string
 	ClientCertData   string
 
-	HttpProxy func(*http.Request) (*url.URL, error)
+	HttpProxy  func(*http.Request) (*url.URL, error)
+	enableOTEL bool
 }
 
 type MTLS struct {
@@ -46,16 +47,16 @@ func CallOptionInsecure() CallOption {
 	}
 }
 
-// ServerCACallOption 设置服务端CA证书数据.
-func ServerCACallOption(serverCAData string) CallOption {
+// CallOptionServerCA 设置服务端CA证书数据.
+func CallOptionServerCA(serverCAData string) CallOption {
 	return func(c *callInfo) {
 		c.TlsEnabled = true
 		c.ServerCA = serverCAData
 	}
 }
 
-// MTLSCallOption 是否开启双向认证.
-func MTLSCallOption(serverCAData string, clientCertData string, clientKeyData string) CallOption {
+// CallOptionMTLS 是否开启双向认证.
+func CallOptionMTLS(serverCAData string, clientCertData string, clientKeyData string) CallOption {
 	return func(c *callInfo) {
 		c.MutualTlsEnabled = true
 		c.TlsEnabled = true
@@ -67,8 +68,8 @@ func MTLSCallOption(serverCAData string, clientCertData string, clientKeyData st
 
 type ProcessRequestFunc func(req *http.Request) (*http.Request, error)
 
-// HttpRequestProcessOption 在http请求发起调用前，对http请求进行处理. 如根据url/请求头进行加密,并写入httpReq.
-func HttpRequestProcessOption(fun ProcessRequestFunc) CallOption {
+// CallOptionHttpRequestProcess 在http请求发起调用前，对http请求进行处理. 如根据url/请求头进行加密,并写入httpReq.
+func CallOptionHttpRequestProcess(fun ProcessRequestFunc) CallOption {
 	return func(c *callInfo) {
 		c.httpRequestProcess = fun
 	}
@@ -86,5 +87,11 @@ func CallOptionTransport(tp *http.Transport) CallOption {
 func CallOptionProxy(proxy func(*http.Request) (*url.URL, error)) CallOption {
 	return func(c *callInfo) {
 		c.HttpProxy = proxy
+	}
+}
+
+func CallOptionOTEL() CallOption {
+	return func(c *callInfo) {
+		c.enableOTEL = true
 	}
 }

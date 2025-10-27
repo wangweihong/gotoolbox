@@ -117,7 +117,7 @@ func TestErrorStack_ToStatus(t *testing.T) {
 			e2 := ethird()
 			s3 := errors.ToStatus(e2)
 			_ = s3
-			//json.PrintObject(s3)
+			json.PrintObject(s3)
 			//	{
 			//		"HTTPStatus": 500,
 			//		"Code": 1001,
@@ -142,6 +142,49 @@ func TestErrorStack_ToStatus(t *testing.T) {
 			//	}
 			//]
 			//}
+		})
+
+		Convey("ErrorStack.ToStatus with code", func() {
+
+			//模拟跨服务错误转换
+			e2 := errors.WithCode(123, "34")
+			s3 := errors.ToStatus(e2)
+			_ = s3
+			json.PrintObject(s3)
+			//	{
+			//		"HTTPStatus": 500,
+			//		"Code": 1001,
+			//		"Message": {
+			//		"CN": "请求失败",
+			//			"EN": "call error"
+			//	},
+			//		"Desc": "call error:End of input:error example",
+			//		"Cause": [
+			//	{
+			//		"Service": {
+			//			"Host": "127.0.0.1",
+			//			"Pid": 123,
+			//			"Name": "github.com/wangweihong/gotoolbox"
+			//		},
+			//		"Stacks": [
+			//			"github.com/wangweihong/gotoolbox/pkg/errors/status_test.go:103 github.com/wangweihong/gotoolbox/pkg/errors_test.ethird'",
+			//		"github.com/wangweihong/gotoolbox/pkg/errors/status_test.go:114 github.com/wangweihong/gotoolbox/pkg/errors_test.TestErrorStack2.func1.1'",
+			//		"github.com/wangweihong/gotoolbox/pkg/errors/status_test.go:111 github.com/wangweihong/gotoolbox/pkg/errors_test.TestErrorStack2.func1'",
+			//		"github.com/wangweihong/gotoolbox/pkg/errors/status_test.go:109 github.com/wangweihong/gotoolbox/pkg/errors_test.TestErrorStack2'"
+			//	]
+			//	}
+			//]
+			//}
+		})
+
+		Convey("ErrorStack.ToStatus wrap code", func() {
+
+			//模拟跨服务错误转换
+			e2 := errors.WrapCode(efirst(), 123)
+			s3 := errors.ToStatus(e2)
+			_ = s3
+			json.PrintObject(s3)
+
 		})
 	})
 }

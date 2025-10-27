@@ -108,9 +108,9 @@ func ToStatus(err error) *Status {
 		err:  err,
 		code: unknown.code,
 	}
-
 	switch e := err.(type) {
 	case *status:
+
 		cur := callersDepth(-1, 4)
 		newStack := MergeStack(cur, e.stack)
 
@@ -145,7 +145,6 @@ func (m *status) ToStatus() *Status {
 		Stacks:  processProjectStacks(m.StackTrace()),
 	})
 	newCause = append(newCause, cause...)
-
 	return &Status{
 		Code:       coder.Code(),
 		HTTPStatus: coder.HTTPStatus(),
@@ -178,6 +177,7 @@ func (m *status) ToBasicJson() map[string]any {
 	//out["desc"] = m.description
 	//out["message"] = m.Message()
 	//out["code"] = m.Code()
+	out["stack"] = m.stack.StackTrace()
 
 	return out
 }
@@ -188,6 +188,7 @@ func (m *status) ToDetailJson() map[string]any {
 	//out["message"] = m.Message()
 	//out["code"] = m.Code()
 	//out["http"] = m.HTTPStatus()
+	out["stack"] = m.stack.StackTrace()
 	return out
 }
 
@@ -199,27 +200,28 @@ func FromError(err error) *status {
 	if err == nil {
 		return nil
 	}
-
 	st := &status{
 		err:  err,
 		code: unknown.code,
 	}
-
+	//fmt.Println(reflect.TypeOf(err))
 	switch e := err.(type) {
 	case *status:
 		newStack := MergeStack(callersDepth(-1, 4), e.stack)
 		st.stack = newStack
 		st.code = e.code
-
 	// error is generate from github.com/pkg/errors
 	case StdStackTracer:
-		st.stack = toStackTrace(e.StackTrace()).Stack()
+		est := toStackTrace(e.StackTrace())
+		st.stack = est.Stack()
 
-	// error is generate from New/WithStack/WithCode/WithMessage
+	// error is generate from New/Errorf/WithStack/WithCode/WithMessage
 	case StackTracer:
-		st.stack = e.StackTrace().Stack()
+		frames := e.StackTrace()
+		//fmt.Println("frames:", len(frames))
+		st.stack = frames.Stack()
 	default:
-		st.stack = callersDepth(-1, 4)
+		st.stack = callers()
 	}
 	return st
 }

@@ -23,10 +23,10 @@ func StructReflectValueCompare(v1, v2 reflect.Value, fieldName string) int {
 		}
 	}
 
-	return Compare(fi, fj)
+	return ReflectCompare(fi, fj)
 }
 
-func Compare(fi, fj reflect.Value) int {
+func ReflectCompare(fi, fj reflect.Value) int {
 	if !fi.Type().Comparable() || !fj.Type().Comparable() {
 		return 0
 	}

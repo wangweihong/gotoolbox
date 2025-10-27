@@ -1,196 +1,304 @@
-package cache
+package example
 
 import (
+	"errors"
 	"fmt"
+	"reflect"
+	"sync"
+	"time"
+
+	"github.com/wangweihong/gotoolbox/pkg/cache"
+	"github.com/wangweihong/gotoolbox/pkg/sets"
+
+	"github.com/google/uuid"
 )
 
-type Store interface {
-	// Add adds the given object to the accumulator associated with the given object's key
-	Add(obj any) error
-
-	// Update updates the given object in the accumulator associated with the given object's key
-	Update(obj any) error
-
-	// Delete deletes the given object from the accumulator associated with the given object's key
-	Delete(obj any) error
-
-	// List returns a list of all the currently non-empty accumulators
-	List() []any
-
-	// ListKeys returns a list of all the keys currently associated with non-empty accumulators
+type UserManagerInterface interface {
+	Add(obj *User) (*User, error)
+	Update(obj *User) error
+	Delete(obj *User) error
+	List() []*User
 	ListKeys() []string
+	Get(obj interface{}) (item *User, exists bool, err error)
+	GetByKey(key string) (item *User, exists bool, err error)
+	Replace([]*User, string) error
 
-	// Get returns the accumulator associated with the given object's key
-	Get(obj any) (item any, exists bool, err error)
-
-	// GetByKey returns the accumulator associated with the given key
-	GetByKey(key string) (item any, exists bool, err error)
-
-	// Replace will delete the contents of the store, using instead the
-	// given list. Store takes ownership of the list, you should not reference
-	// it after calling this function.
-	Replace([]any, string) error
-
-	// Resync is meaningless in the terms appearing here but has
-	// meaning in some implementations that have non-trivial
-	// additional behavior (e.g., DeltaFIFO).
-	Resync() error
+	ListInTenant(tenant string) []*User
+	ListInTenantIndex(tenant string) []string
+	ListInGroup(group string) []*User
+	ListInGroupIndex(group string) []string
+	// 删除用户中某个组的索引
+	CleanGroup(group string) error
+	ListInRole(role string) []*User
+	ListInRoleIndex(role string) []string
+	CleanRole(role string) error
 }
 
-// KeyFunc knows how to make a key from an object. Implementations should be deterministic.
-// 用于从对象中计算出指定的key.如MetaNamespaceKeyFunc，通过对象命名空间和对象计算出key.
-type KeyFunc func(obj any) (string, error)
-
-// KeyError will be returned any time a KeyFunc gives an error; it includes the object
-// at fault.
-type KeyError struct {
-	Obj any
-	Err error
-}
-
-// Error gives a human-readable description of the error.
-func (k KeyError) Error() string {
-	return fmt.Sprintf("couldn't create key for object %+v: %v", k.Obj, k.Err)
-}
-
-// `*cache` implements Indexer in terms of a ThreadSafeStore and an
-// associated KeyFunc.
-type cache struct {
-	// cacheStorage bears the burden of thread safety for the cache
-	cacheStorage ThreadSafeStore // 缓存表
-	// keyFunc is used to make the key for objects stored in and retrieved from items, and
-	// should be deterministic.
-	keyFunc KeyFunc // 用于从资源对象中构造唯一的key。该key与资源对象将会在缓存表中进行映射
-}
-
-var _ Store = &cache{}
-
-// Add inserts an item into the cache.
-// 将指定的对象添加到缓存中.
-func (c *cache) Add(obj any) error {
-	key, err := c.keyFunc(obj)
-	if err != nil {
-		return KeyError{obj, err}
+func (u userManager) Add(obj *User) (*User, error) {
+	if obj.Name == "" {
+		return nil, fmt.Errorf("user name is empty")
 	}
-	c.cacheStorage.Add(key, obj)
-	return nil
-}
 
-// Update sets an item in the cache to its updated state.
-// 更新缓存中指定对象信息.
-func (c *cache) Update(obj any) error {
-	key, err := c.keyFunc(obj)
+	meta := obj.DeepCopy()
+	meta.CreateTime = time.Now()
+	meta.UpdateTime = time.Now()
+	meta.UUID = uuid.New().String()
+
+	err := u.Indexer.Add(meta)
 	if err != nil {
-		return KeyError{obj, err}
+		return nil, err
 	}
-	err = c.cacheStorage.Update(key, obj)
-	return err
+	return meta.DeepCopy(), err
 }
 
-// Delete removes an item from the cache.
-// 将对象从缓存中移除.
-func (c *cache) Delete(obj any) error {
-	key, err := c.keyFunc(obj)
-	if err != nil {
-		return KeyError{obj, err}
+func (u userManager) Update(obj *User) error {
+	if obj.UUID == "" {
+		return fmt.Errorf("user uuid is empty")
 	}
-	c.cacheStorage.Delete(key)
-	return nil
+	// TODO: check user data if valid
+	meta := obj.DeepCopy()
+	meta.UpdateTime = time.Now()
+
+	return u.Indexer.Update(obj)
 }
 
-// List returns a list of all the items.
-// List is completely threadsafe as long as you treat all items as immutable.
-func (c *cache) List() []any {
-	return c.cacheStorage.List()
+func (u userManager) Delete(obj *User) error {
+	return u.Indexer.Delete(obj)
 }
 
-// ListKeys returns a list of all the keys of the objects currently
-// in the cache.
-// 缓存中的对象索引列表.
-func (c *cache) ListKeys() []string {
-	return c.cacheStorage.ListKeys()
-}
-
-// GetIndexers returns the indexers of cache
-// 缓存中的索引器列表。（索引器是除了key以外的其他快速定位一系列的方法).
-func (c *cache) GetIndexers() Indexers {
-	return c.cacheStorage.GetIndexers()
-}
-
-// Index returns a list of items that match on the index function
-// Index is thread-safe so long as you treat all items as immutable
-// 获取指定索引器.
-func (c *cache) Index(indexName string, obj any) ([]any, error) {
-	return c.cacheStorage.Index(indexName, obj)
-}
-
-func (c *cache) IndexKeys(indexName, indexKey string) ([]string, error) {
-	return c.cacheStorage.IndexKeys(indexName, indexKey)
-}
-
-// ListIndexFuncValues returns the list of generated values of an Index func.
-func (c *cache) ListIndexFuncValues(indexName string) []string {
-	return c.cacheStorage.ListIndexFuncValues(indexName)
-}
-
-func (c *cache) ByIndex(indexName, indexKey string) ([]any, error) {
-	return c.cacheStorage.ByIndex(indexName, indexKey)
-}
-
-func (c *cache) AddIndexers(newIndexers Indexers) error {
-	return c.cacheStorage.AddIndexers(newIndexers)
-}
-
-// Get returns the requested item, or sets exists=false.
-// Get is completely threadsafe as long as you treat all items as immutable.
-func (c *cache) Get(obj any) (item any, exists bool, err error) {
-	key, err := c.keyFunc(obj)
-	if err != nil {
-		return nil, false, KeyError{obj, err}
-	}
-	return c.GetByKey(key)
-}
-
-// GetByKey returns the request item, or exists=false.
-// GetByKey is completely threadsafe as long as you treat all items as immutable.
-func (c *cache) GetByKey(key string) (item any, exists bool, err error) {
-	item, exists = c.cacheStorage.Get(key)
-	return item, exists, nil
-}
-
-// Replace will delete the contents of 'c', using instead the given list.
-// 'c' takes ownership of the list, you should not reference the list again
-// after calling this function.
-func (c *cache) Replace(list []any, resourceVersion string) error {
-	items := make(map[string]any, len(list))
-	for _, item := range list {
-		key, err := c.keyFunc(item)
-		if err != nil {
-			return KeyError{item, err}
+func (u userManager) List() []*User {
+	objects := u.Indexer.List()
+	users := make([]*User, 0, len(objects))
+	for _, v := range objects {
+		if u, ok := v.(*User); ok {
+			users = append(users, u.DeepCopy())
 		}
-		items[key] = item
 	}
-	c.cacheStorage.Replace(items, resourceVersion)
+	return users
+}
+
+func (u userManager) Get(obj interface{}) (*User, bool, error) {
+	meta, exists, err := u.Indexer.Get(obj)
+	if err != nil {
+		return nil, false, err
+	}
+
+	if !exists {
+		return nil, false, nil
+	}
+
+	item, ok := meta.(*User)
+	if !ok {
+		return nil, false, errors.New("object is not user")
+	}
+
+	return item.DeepCopy(), true, nil
+}
+
+func (u userManager) GetByKey(key string) (*User, bool, error) {
+	obj, exists, err := u.Indexer.GetByKey(key)
+	if err != nil {
+		return nil, exists, err
+	}
+
+	if !exists {
+		return nil, false, nil
+	}
+
+	item, ok := obj.(*User)
+	if !ok {
+		return nil, true, errors.New("object is not User")
+	}
+
+	return item, false, nil
+}
+
+func (u userManager) Replace(users []*User, s string) error {
+	items := make([]interface{}, 0, len(users))
+	for _, v := range users {
+		items = append(items, v.DeepCopy())
+	}
+
+	return u.Indexer.Replace(items, s)
+}
+
+func (u userManager) ListInTenant(tenant string) []*User {
+	users := make([]*User, 0)
+
+	objects, err := u.Indexer.Index(indexTypeTenantUser, &User{Tenant: tenant})
+	if err != nil {
+		return users
+	}
+	for _, v := range objects {
+		if u, ok := v.(*User); ok {
+			users = append(users, u.DeepCopy())
+		}
+	}
+	return users
+}
+
+func (u userManager) ListInTenantIndex(tenant string) []string {
+	objects, err := u.Indexer.IndexKeys(indexTypeTenantUser, tenant)
+	if err != nil {
+		return nil
+	}
+	return objects
+}
+
+func (u userManager) ListInGroup(groups string) []*User {
+	users := make([]*User, 0)
+
+	objects, err := u.Indexer.Index(indexTypeGroupUser, &User{Group: []string{groups}})
+	if err != nil {
+		return users
+	}
+	for _, v := range objects {
+		if u, ok := v.(*User); ok {
+			users = append(users, u.DeepCopy())
+		}
+	}
+	return users
+}
+
+func (u userManager) ListInGroupIndex(group string) []string {
+	objects, err := u.Indexer.IndexKeys(indexTypeGroupUser, group)
+	if err != nil {
+		return nil
+	}
+	return objects
+}
+
+func (u userManager) CleanGroup(group string) error {
+	objects, err := u.Indexer.Index(indexTypeGroupUser, &User{Group: []string{group}})
+	if err != nil {
+		return err
+	}
+	for _, v := range objects {
+		if user, ok := v.(*User); ok {
+			meta := user.DeepCopy()
+			meta.Group = sets.NewString(meta.Group...).Delete(group).List()
+			if err := u.Indexer.Update(meta); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
-// Resync is meaningless for one of these.
-func (c *cache) Resync() error {
+func (u userManager) ListInRole(role string) []*User {
+	users := make([]*User, 0)
+
+	objects, err := u.Indexer.Index(indexTypeRoleUser, &User{Roles: []string{role}})
+	if err != nil {
+		return users
+	}
+	for _, v := range objects {
+		if u, ok := v.(*User); ok {
+			users = append(users, u.DeepCopy())
+		}
+	}
+	return users
+}
+
+func (u userManager) ListInRoleIndex(role string) []string {
+	objects, err := u.Indexer.IndexKeys(indexTypeRoleUser, role)
+	if err != nil {
+		return nil
+	}
+	return objects
+}
+
+func (u userManager) CleanRole(role string) error {
+	objects, err := u.Indexer.Index(indexTypeRoleUser, &User{Roles: []string{role}})
+	if err != nil {
+		return err
+	}
+	for _, v := range objects {
+		if user, ok := v.(*User); ok {
+			meta := user.DeepCopy()
+			meta.Roles = sets.NewString(meta.Roles...).Delete(role).List()
+			if err := u.Indexer.Update(meta); err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 
-// NewStore returns a Store implemented simply with a map and a lock.
-func NewStore(keyFunc KeyFunc) Store {
-	return &cache{
-		cacheStorage: NewThreadSafeStore(Indexers{}, Indices{}),
-		keyFunc:      keyFunc,
+var _ UserManagerInterface = &userManager{}
+
+var (
+	umOnce     sync.Once
+	umInstance *userManager
+)
+
+func GetUMInstance() UserManagerInterface {
+	umOnce.Do(func() {
+		userIndexers := make(map[string]cache.IndexFunc)
+		userIndexers[indexTypeTenantUser] = tenantUserIndexer
+		userIndexers[indexTypeGroupUser] = groupUserIndexer
+		userIndexers[indexTypeRoleUser] = roleUserIndexer
+
+		umInstance = &userManager{
+			Indexer: cache.NewIndexer(userKeyFunc, userIndexers),
+		}
+	})
+	return umInstance
+}
+
+func NewUMInstance() UserManagerInterface {
+	userIndexers := make(map[string]cache.IndexFunc)
+	userIndexers[indexTypeTenantUser] = tenantUserIndexer
+	userIndexers[indexTypeGroupUser] = groupUserIndexer
+	userIndexers[indexTypeRoleUser] = roleUserIndexer
+
+	return &userManager{
+		Indexer: cache.NewIndexer(userKeyFunc, userIndexers),
 	}
 }
 
-// NewIndexer returns an Indexer implemented simply with a map and a lock.
-func NewIndexer(keyFunc KeyFunc, indexers Indexers) Indexer {
-	return &cache{
-		cacheStorage: NewThreadSafeStore(indexers, Indices{}),
-		keyFunc:      keyFunc,
+type userManager struct {
+	cache.Indexer
+}
+
+func userKeyFunc(obj interface{}) (string, error) {
+	if obj == nil {
+		return "", fmt.Errorf("object is nil")
 	}
+	user, ok := obj.(*User)
+	if !ok {
+		return "", fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+	}
+	return user.UUID, nil
+}
+
+// Object support indexer type.
+const (
+	indexTypeTenantUser = "tenantUser"
+	indexTypeGroupUser  = "groupUser"
+	indexTypeRoleUser   = "roleUser"
+)
+
+func tenantUserIndexer(obj interface{}) ([]string, error) {
+	user, ok := obj.(*User)
+	if !ok {
+		return []string{""}, fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+	}
+	return []string{user.Tenant}, nil
+}
+
+func groupUserIndexer(obj interface{}) ([]string, error) {
+	user, ok := obj.(*User)
+	if !ok {
+		return []string{""}, fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+	}
+	return user.Group, nil
+}
+
+func roleUserIndexer(obj interface{}) ([]string, error) {
+	user, ok := obj.(*User)
+	if !ok {
+		return []string{""}, fmt.Errorf("object is %v,not %v type", reflect.TypeOf(obj), reflect.TypeOf(&User{}))
+	}
+	return user.Roles, nil
 }

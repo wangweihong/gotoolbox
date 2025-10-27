@@ -10,75 +10,75 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestStringStringMap_Init(t *testing.T) {
-	Convey("TestStringStringMap_Init", t, func() {
+func TestStringString_Init(t *testing.T) {
+	Convey("TestStringString_Init", t, func() {
 		var nilMap map[string]string
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			maputil.StringStringMap(nilMap).Init()
+			maputil.StringString(nilMap).Init()
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringStringMap(nilMap).Init()
+			nilMap = maputil.StringString(nilMap).Init()
 			So(nilMap, ShouldNotBeNil)
 		})
 	})
 }
 
-func TestStringStringMap_Set(t *testing.T) {
-	Convey("TestStringStringMap_Set", t, func() {
+func TestStringString_Set(t *testing.T) {
+	Convey("TestStringString_Set", t, func() {
 		var nilMap map[string]string
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			maputil.StringStringMap(nilMap).Set("1", "2")
+			maputil.StringString(nilMap).Set("1", "2")
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringStringMap(nilMap).Set("a", "b").Set("c", "D")
+			nilMap = maputil.StringString(nilMap).Set("a", "b").Set("c", "D")
 			So(nilMap, ShouldNotBeNil)
 			So(len(nilMap), ShouldEqual, 2)
 		})
 	})
 }
 
-func TestStringStringMap_DeepCopy(t *testing.T) {
-	Convey("TestStringStringMap_Set", t, func() {
+func TestStringString_DeepCopy(t *testing.T) {
+	Convey("TestStringString_Set", t, func() {
 		var nilMap map[string]string
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringStringMap(nilMap).DeepCopy()
+			nilMap = maputil.StringString(nilMap).DeepCopy()
 			So(nilMap, ShouldNotBeNil)
 
-			nilMap = maputil.StringStringMap(nilMap).Set("a", "b")
+			nilMap = maputil.StringString(nilMap).Set("a", "b")
 			So(nilMap, ShouldNotBeNil)
 			So(len(nilMap), ShouldEqual, 1)
-			So(maputil.StringStringMap(nilMap).Has("a"), ShouldBeTrue)
+			So(maputil.StringString(nilMap).Has("a"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringStringMap_Delete(t *testing.T) {
-	Convey("TestStringStringMap_Delete", t, func() {
+func TestStringString_Delete(t *testing.T) {
+	Convey("TestStringString_Delete", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]string
-			maputil.StringStringMap(nilMap).Delete("a")
+			maputil.StringString(nilMap).Delete("a")
 		})
 		Convey("not nil", func() {
 			d := make(map[string]string)
 			d["a"] = "b"
 
-			maputil.StringStringMap(d).Delete("a")
-			So(maputil.StringStringMap(d).Has("a"), ShouldBeFalse)
+			maputil.StringString(d).Delete("a")
+			So(maputil.StringString(d).Has("a"), ShouldBeFalse)
 		})
 	})
 }
 
-func TestStringStringMap_DeleteIfKey(t *testing.T) {
-	Convey("TestStringStringMap_DeleteIfKey", t, func() {
+func TestStringString_DeleteIfKey(t *testing.T) {
+	Convey("TestStringString_DeleteIfKey", t, func() {
 		condition := func(k string) bool {
 			if strings.Contains(k, "b") {
 				return true
@@ -87,24 +87,24 @@ func TestStringStringMap_DeleteIfKey(t *testing.T) {
 		}
 		Convey("nil", func() {
 			var nilMap map[string]string
-			maputil.StringStringMap(nilMap).DeleteIfKey(condition)
+			maputil.StringString(nilMap).DeleteIfKey(condition)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]string)
 			d["ab"] = "ab"
 			d["bb"] = "bb"
 			d["cc"] = "cc"
-			maputil.StringStringMap(d).DeleteIfKey(condition)
+			maputil.StringString(d).DeleteIfKey(condition)
 
-			So(maputil.StringStringMap(d).Has("ab"), ShouldBeFalse)
-			So(maputil.StringStringMap(d).Has("bb"), ShouldBeFalse)
-			So(maputil.StringStringMap(d).Has("cc"), ShouldBeTrue)
+			So(maputil.StringString(d).Has("ab"), ShouldBeFalse)
+			So(maputil.StringString(d).Has("bb"), ShouldBeFalse)
+			So(maputil.StringString(d).Has("cc"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringStringMap_DeleteIfValue(t *testing.T) {
-	Convey("TestStringStringMap_DeleteIfValue", t, func() {
+func TestStringString_DeleteIfValue(t *testing.T) {
+	Convey("TestStringString_DeleteIfValue", t, func() {
 		condition := func(k string) bool {
 			if strings.Contains(k, "b") {
 				return true
@@ -113,43 +113,43 @@ func TestStringStringMap_DeleteIfValue(t *testing.T) {
 		}
 		Convey("nil", func() {
 			var nilMap map[string]string
-			maputil.StringStringMap(nilMap).DeleteIfValue(condition)
+			maputil.StringString(nilMap).DeleteIfValue(condition)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]string)
 			d["ab"] = "ab"
 			d["bb"] = "bb"
 			d["cc"] = "cc"
-			maputil.StringStringMap(d).DeleteIfValue(condition)
-			So(maputil.StringStringMap(d).Has("ab"), ShouldBeFalse)
-			So(maputil.StringStringMap(d).Has("bb"), ShouldBeFalse)
-			So(maputil.StringStringMap(d).Has("cc"), ShouldBeTrue)
+			maputil.StringString(d).DeleteIfValue(condition)
+			So(maputil.StringString(d).Has("ab"), ShouldBeFalse)
+			So(maputil.StringString(d).Has("bb"), ShouldBeFalse)
+			So(maputil.StringString(d).Has("cc"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringStringMap_Get(t *testing.T) {
-	Convey("TestStringStringMap_Get", t, func() {
+func TestStringString_Get(t *testing.T) {
+	Convey("TestStringString_Get", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]string
 
-			So(maputil.StringStringMap(nilMap).Get("notexist"), ShouldEqual, "")
+			So(maputil.StringString(nilMap).Get("notexist"), ShouldEqual, "")
 		})
 		Convey("not nil", func() {
 			d := make(map[string]string)
 			d["a"] = "b"
 
-			So(maputil.StringStringMap(d).Get("a"), ShouldEqual, "b")
-			So(maputil.StringStringMap(d).Get("notexist"), ShouldEqual, "")
+			So(maputil.StringString(d).Get("a"), ShouldEqual, "b")
+			So(maputil.StringString(d).Get("notexist"), ShouldEqual, "")
 		})
 	})
 }
 
-func TestStringStringMap_Keys(t *testing.T) {
-	Convey("TestStringStringMap_Keys", t, func() {
+func TestStringString_Keys(t *testing.T) {
+	Convey("TestStringString_Keys", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]string
-			keys := maputil.StringStringMap(nilMap).Keys()
+			keys := maputil.StringString(nilMap).Keys()
 
 			So(len(keys), ShouldEqual, 0)
 		})
@@ -158,7 +158,7 @@ func TestStringStringMap_Keys(t *testing.T) {
 			d["a"] = "1"
 			d["b"] = "2"
 
-			keys := maputil.StringStringMap(d).Keys()
+			keys := maputil.StringString(d).Keys()
 			So(len(keys), ShouldEqual, 2)
 			So(sets.NewString(keys...).Equal(sets.NewString("a", "b")), ShouldBeTrue)
 		})

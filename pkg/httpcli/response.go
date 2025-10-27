@@ -5,6 +5,10 @@ import (
 	"encoding/xml"
 	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
 
 	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/decode"
@@ -75,4 +79,66 @@ func (r *HttpResponse) Decode(resp any) error {
 	_ = mm.Register(decode.ApplicationJson, json.Unmarshal)
 	_ = mm.Register(decode.ApplicationXml, xml.Unmarshal)
 	return mm.UnmarshalManifest(r.GetHeader(decode.ContentType), byteData, resp)
+}
+
+func (r *HttpResponse) DownloadFile(saveDir string) error {
+	fn, err := GetFileName(r.Response.Header)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	savePath := filepath.Join(saveDir, fn)
+	if err := os.MkdirAll(saveDir, 0755); err != nil {
+		return errors.Errorf("mkdirAll %v error:%w", saveDir, err)
+	}
+
+	file, err := os.Create(savePath)
+	if err != nil {
+		return errors.Errorf("create file %v error:%w", saveDir, err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, bytes.NewBuffer([]byte(r.GetBody()))); err != nil {
+		// 删除不完整文件
+		os.Remove(savePath)
+		return errors.Errorf("write file %v error:%w", saveDir, err)
+	}
+	return nil
+}
+
+func GetFileName(responseHeader http.Header) (string, error) {
+	if cd := responseHeader.Get("Content-Disposition"); cd != "" {
+		if matches := regexp.MustCompile(`filename\*?=['"]?(?:UTF-\d['"]*)?([^;\n"']*)['"]?`).FindStringSubmatch(cd); len(matches) > 1 {
+			if decoded, err := url.QueryUnescape(matches[1]); err == nil {
+				return decoded, nil
+			}
+			return matches[1], nil
+		}
+	}
+	return "", errors.Errorf("not filename exists in response header")
+}
+
+func DownloadFile(responseHeader http.Header, body []byte, saveDir string) error {
+	fn, err := GetFileName(responseHeader)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+
+	savePath := filepath.Join(saveDir, fn)
+	if err := os.MkdirAll(saveDir, 0755); err != nil {
+		return errors.Errorf("mkdirAll %v error:%w", saveDir, err)
+	}
+
+	file, err := os.Create(savePath)
+	if err != nil {
+		return errors.Errorf("create file %v error:%w", saveDir, err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, bytes.NewBuffer(body)); err != nil {
+		// 删除不完整文件
+		os.Remove(savePath)
+		return errors.Errorf("write file %v error:%w", saveDir, err)
+	}
+	return nil
 }

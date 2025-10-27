@@ -10,75 +10,75 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestStringIntMap_Init(t *testing.T) {
-	Convey("TestStringIntMap_Init", t, func() {
+func TestStringInt_Init(t *testing.T) {
+	Convey("TestStringInt_Init", t, func() {
 		var nilMap map[string]int
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			maputil.StringIntMap(nilMap).Init()
+			maputil.StringInt(nilMap).Init()
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringIntMap(nilMap).Init()
+			nilMap = maputil.StringInt(nilMap).Init()
 			So(nilMap, ShouldNotBeNil)
 		})
 	})
 }
 
-func TestStringIntMap_Set(t *testing.T) {
-	Convey("TestStringIntMap_Set", t, func() {
+func TestStringInt_Set(t *testing.T) {
+	Convey("TestStringInt_Set", t, func() {
 		var nilMap map[string]int
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			maputil.StringIntMap(nilMap).Set("1", 2)
+			maputil.StringInt(nilMap).Set("1", 2)
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringIntMap(nilMap).Set("a", 3).Set("c", 3)
+			nilMap = maputil.StringInt(nilMap).Set("a", 3).Set("c", 3)
 			So(nilMap, ShouldNotBeNil)
 			So(len(nilMap), ShouldEqual, 2)
 		})
 	})
 }
 
-func TestStringIntMap_DeepCopy(t *testing.T) {
-	Convey("TestStringIntMap_Set", t, func() {
+func TestStringInt_DeepCopy(t *testing.T) {
+	Convey("TestStringInt_Set", t, func() {
 		var nilMap map[string]int
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringIntMap(nilMap).DeepCopy()
+			nilMap = maputil.StringInt(nilMap).DeepCopy()
 			So(nilMap, ShouldNotBeNil)
 
-			nilMap = maputil.StringIntMap(nilMap).Set("a", 4)
+			nilMap = maputil.StringInt(nilMap).Set("a", 4)
 			So(nilMap, ShouldNotBeNil)
 			So(len(nilMap), ShouldEqual, 1)
-			So(maputil.StringIntMap(nilMap).Has("a"), ShouldBeTrue)
+			So(maputil.StringInt(nilMap).Has("a"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringIntMap_Delete(t *testing.T) {
-	Convey("TestStringIntMap_Delete", t, func() {
+func TestStringInt_Delete(t *testing.T) {
+	Convey("TestStringInt_Delete", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]int
-			maputil.StringIntMap(nilMap).Delete("a")
+			maputil.StringInt(nilMap).Delete("a")
 		})
 		Convey("not nil", func() {
 			d := make(map[string]int)
 			d["a"] = 3
 
-			maputil.StringIntMap(d).Delete("a")
-			So(maputil.StringIntMap(d).Has("a"), ShouldBeFalse)
+			maputil.StringInt(d).Delete("a")
+			So(maputil.StringInt(d).Has("a"), ShouldBeFalse)
 		})
 	})
 }
 
-func TestStringIntMap_DeleteIfKey(t *testing.T) {
-	Convey("TestStringIntMap_DeleteIfKey", t, func() {
+func TestStringInt_DeleteIfKey(t *testing.T) {
+	Convey("TestStringInt_DeleteIfKey", t, func() {
 		condition := func(k string) bool {
 			if strings.Contains(k, "b") {
 				return true
@@ -87,24 +87,24 @@ func TestStringIntMap_DeleteIfKey(t *testing.T) {
 		}
 		Convey("nil", func() {
 			var nilMap map[string]int
-			maputil.StringIntMap(nilMap).DeleteIfKey(condition)
+			maputil.StringInt(nilMap).DeleteIfKey(condition)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]int)
 			d["ab"] = 10
 			d["bb"] = 20
 			d["cc"] = 31
-			maputil.StringIntMap(d).DeleteIfKey(condition)
+			maputil.StringInt(d).DeleteIfKey(condition)
 
-			So(maputil.StringIntMap(d).Has("ab"), ShouldBeFalse)
-			So(maputil.StringIntMap(d).Has("bb"), ShouldBeFalse)
-			So(maputil.StringIntMap(d).Has("cc"), ShouldBeTrue)
+			So(maputil.StringInt(d).Has("ab"), ShouldBeFalse)
+			So(maputil.StringInt(d).Has("bb"), ShouldBeFalse)
+			So(maputil.StringInt(d).Has("cc"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringIntMap_DeleteIfValue(t *testing.T) {
-	Convey("TestStringIntMap_DeleteIfValue", t, func() {
+func TestStringInt_DeleteIfValue(t *testing.T) {
+	Convey("TestStringInt_DeleteIfValue", t, func() {
 		condition := func(k int) bool {
 			if k%10 == 0 {
 				return true
@@ -113,43 +113,43 @@ func TestStringIntMap_DeleteIfValue(t *testing.T) {
 		}
 		Convey("nil", func() {
 			var nilMap map[string]int
-			maputil.StringIntMap(nilMap).DeleteIfValue(condition)
+			maputil.StringInt(nilMap).DeleteIfValue(condition)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]int)
 			d["ab"] = 10
 			d["bb"] = 20
 			d["cc"] = 31
-			maputil.StringIntMap(d).DeleteIfValue(condition)
-			So(maputil.StringIntMap(d).Has("ab"), ShouldBeFalse)
-			So(maputil.StringIntMap(d).Has("bb"), ShouldBeFalse)
-			So(maputil.StringIntMap(d).Has("cc"), ShouldBeTrue)
+			maputil.StringInt(d).DeleteIfValue(condition)
+			So(maputil.StringInt(d).Has("ab"), ShouldBeFalse)
+			So(maputil.StringInt(d).Has("bb"), ShouldBeFalse)
+			So(maputil.StringInt(d).Has("cc"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringIntMap_Get(t *testing.T) {
-	Convey("TestStringIntMap_Get", t, func() {
+func TestStringInt_Get(t *testing.T) {
+	Convey("TestStringInt_Get", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]int
 
-			So(maputil.StringIntMap(nilMap).Get("notexist"), ShouldEqual, 0)
+			So(maputil.StringInt(nilMap).Get("notexist"), ShouldEqual, 0)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]int)
 			d["a"] = 2
 
-			So(maputil.StringIntMap(d).Get("a"), ShouldEqual, 2)
-			So(maputil.StringIntMap(d).Get("notexist"), ShouldEqual, 0)
+			So(maputil.StringInt(d).Get("a"), ShouldEqual, 2)
+			So(maputil.StringInt(d).Get("notexist"), ShouldEqual, 0)
 		})
 	})
 }
 
-func TestStringIntMap_Keys(t *testing.T) {
-	Convey("TestStringIntMap_Keys", t, func() {
+func TestStringInt_Keys(t *testing.T) {
+	Convey("TestStringInt_Keys", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]int
-			keys := maputil.StringIntMap(nilMap).Keys()
+			keys := maputil.StringInt(nilMap).Keys()
 
 			So(len(keys), ShouldEqual, 0)
 		})
@@ -158,7 +158,7 @@ func TestStringIntMap_Keys(t *testing.T) {
 			d["a"] = 1
 			d["b"] = 2
 
-			keys := maputil.StringIntMap(d).Keys()
+			keys := maputil.StringInt(d).Keys()
 			So(len(keys), ShouldEqual, 2)
 			So(sets.NewString(keys...).Equal(sets.NewString("a", "b")), ShouldBeTrue)
 		})

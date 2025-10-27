@@ -4,7 +4,7 @@ import (
 	"crypto/cipher"
 )
 
-//"github.com/lylib/go-crypto"
+// "github.com/lylib/go-crypto"
 type (
 	standardType uint8
 	modeType     uint8

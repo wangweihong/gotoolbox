@@ -193,8 +193,8 @@ func syncLdapUser(ldapUsers []ldap.Account) waitgroup.BatchOutput {
 	return wg.ConvertResultToBatchOutput()
 }
 
-func SyncLdapUser(ctx context.Context, config *ldap.Config, us ldap.UserSearch, gs *ldap.GroupSearch, matcher *ldap.UserGroupMatcher) (result.BatchOutput, error) {
-	groupResult := result.BatchOutput{}
+func SyncLdapUser(ctx context.Context, config *ldap.Config, us ldap.UserSearch, gs *ldap.GroupSearch, matcher *ldap.UserGroupMatcher) (waitgroup.BatchOutput, error) {
+	groupResult := waitgroup.BatchOutput{}
 	ldapGroups, ldapUsers, err := ldap.SyncGroupsAccounts(
 		ctx,
 		*config,

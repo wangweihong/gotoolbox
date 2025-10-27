@@ -1,6 +1,8 @@
 package randutil
 
 import (
+	crand "crypto/rand"
+	"io"
 	"math"
 	"math/rand"
 	"time"
@@ -53,4 +55,13 @@ func RandNumRange(min int, absDelta int) int {
 	}
 	max := min + int(math.Abs(float64(absDelta)))
 	return rand.Intn(max-min+1) + min
+}
+
+func RandBytes(n int) []byte {
+	rv := make([]byte, n)
+
+	if _, err := io.ReadFull(crand.Reader, rv); err != nil {
+		panic(err)
+	}
+	return rv
 }

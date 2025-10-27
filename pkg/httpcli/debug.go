@@ -31,7 +31,7 @@ func logInfoIf(ctx context.Context, msg string) {
 	}
 }
 
-func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply any, err error) maputil.StringAnyMap {
+func callEntry(start time.Time, req *HttpRequest, rawResp *HttpResponse, arg, reply any, err error) maputil.StringAny {
 	fields := make(map[string]any)
 	fields["req_time_begin"] = start.Format("2006-01-02 15:04:05.000000")
 	fields["req_raw_url"] = req.GetPath()

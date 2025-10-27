@@ -1,18 +1,22 @@
 package maputil
 
-import "github.com/wangweihong/gotoolbox/pkg/sets"
+import (
+	"maps"
+
+	"github.com/wangweihong/gotoolbox/pkg/sets"
+)
 
 // Deprecated: use generic function instead
-type StringStringMap map[string]string
+type StringString map[string]string
 
 //TODO : lock
 
-func NewStringStringMap() StringStringMap {
+func NewStringString() StringString {
 	nm := make(map[string]string)
 	return nm
 }
 
-func (m StringStringMap) DeepCopy() StringStringMap {
+func (m StringString) DeepCopy() StringString {
 	o := make(map[string]string, len(m))
 	for k, v := range m {
 		o[k] = v
@@ -20,21 +24,21 @@ func (m StringStringMap) DeepCopy() StringStringMap {
 	return o
 }
 
-func (m StringStringMap) Init() StringStringMap {
+func (m StringString) Init() StringString {
 	if m == nil {
 		return make(map[string]string)
 	}
 	return m
 }
 
-func (m StringStringMap) Delete(key string) {
+func (m StringString) Delete(key string) {
 	if m == nil {
 		return
 	}
 	delete(m, key)
 }
 
-func (m StringStringMap) DeleteIfKey(condition func(string) bool) {
+func (m StringString) DeleteIfKey(condition func(string) bool) {
 	if m == nil {
 		return
 	}
@@ -46,7 +50,7 @@ func (m StringStringMap) DeleteIfKey(condition func(string) bool) {
 	}
 }
 
-func (m StringStringMap) DeleteIfValue(condition func(string) bool) {
+func (m StringString) DeleteIfValue(condition func(string) bool) {
 	if m == nil {
 		return
 	}
@@ -58,7 +62,7 @@ func (m StringStringMap) DeleteIfValue(condition func(string) bool) {
 	}
 }
 
-func (m StringStringMap) Has(key string) bool {
+func (m StringString) Has(key string) bool {
 	if m != nil {
 		if _, exist := m[key]; exist {
 			return true
@@ -67,7 +71,7 @@ func (m StringStringMap) Has(key string) bool {
 	return false
 }
 
-func (m StringStringMap) Set(key string, value string) StringStringMap {
+func (m StringString) Set(key string, value string) StringString {
 	if m == nil {
 		o := make(map[string]string)
 		o[key] = value
@@ -77,7 +81,7 @@ func (m StringStringMap) Set(key string, value string) StringStringMap {
 	return m
 }
 
-func (m StringStringMap) Get(key string) string {
+func (m StringString) Get(key string) string {
 	if m == nil {
 		return ""
 	}
@@ -85,7 +89,7 @@ func (m StringStringMap) Get(key string) string {
 	return v
 }
 
-func (m StringStringMap) Keys() []string {
+func (m StringString) Keys() []string {
 	if m == nil {
 		return []string{}
 	}
@@ -96,7 +100,7 @@ func (m StringStringMap) Keys() []string {
 	return keys
 }
 
-func (m StringStringMap) ToSetString() sets.String {
+func (m StringString) ToSetString() sets.String {
 	ss := sets.NewString()
 
 	if m == nil {
@@ -108,20 +112,21 @@ func (m StringStringMap) ToSetString() sets.String {
 	return ss
 }
 
-func (m StringStringMap) Equal(m2 map[string]string) bool {
-	if len(m) != len(m2) {
-		return false
-	}
+func (m StringString) Equal(m2 map[string]string) bool {
+	return maps.Equal(m, m2)
+	// if len(m) != len(m2) {
+	// 	return false
+	// }
 
-	for k1, v1 := range m {
-		v2, ok := m2[k1]
-		if !ok {
-			return false
-		}
+	// for k1, v1 := range m {
+	// 	v2, ok := m2[k1]
+	// 	if !ok {
+	// 		return false
+	// 	}
 
-		if v1 != v2 {
-			return false
-		}
-	}
-	return true
+	// 	if v1 != v2 {
+	// 		return false
+	// 	}
+	// }
+	// return true
 }

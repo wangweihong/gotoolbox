@@ -1,42 +1,44 @@
 package maputil
 
-import "reflect"
+import (
+	"maps"
+	"reflect"
 
-type StringAnyMap map[string]any
+	"github.com/mitchellh/mapstructure"
+	"github.com/wangweihong/gotoolbox/pkg/json"
+)
 
-func ToStringAnyMap(d map[string]any) StringAnyMap {
-	return StringAnyMap(d)
+type StringAny map[string]any
+
+func ToStringAny(d map[string]any) StringAny {
+	return StringAny(d)
 }
 
 // TODO : lock
-func NewStringAnyMap() StringAnyMap {
+func NewStringAny() StringAny {
 	nm := make(map[string]any)
 	return nm
 }
 
-func (m StringAnyMap) DeepCopy() StringAnyMap {
-	o := make(map[string]any, len(m))
-	for k, v := range m {
-		o[k] = v
-	}
-	return o
+func (m StringAny) DeepCopy() StringAny {
+	return maps.Clone(m)
 }
 
-func (m StringAnyMap) Init() StringAnyMap {
+func (m StringAny) Init() StringAny {
 	if m == nil {
 		return make(map[string]any)
 	}
 	return m
 }
 
-func (m StringAnyMap) Delete(key string) {
+func (m StringAny) Delete(key string) {
 	if m == nil {
 		return
 	}
 	delete(m, key)
 }
 
-func (m StringAnyMap) DeleteIfKey(condition func(string) bool) {
+func (m StringAny) DeleteIfKey(condition func(string) bool) {
 	if m == nil {
 		return
 	}
@@ -48,7 +50,7 @@ func (m StringAnyMap) DeleteIfKey(condition func(string) bool) {
 	}
 }
 
-func (m StringAnyMap) DeleteIfValue(condition func(any) bool) {
+func (m StringAny) DeleteIfValue(condition func(any) bool) {
 	if m == nil {
 		return
 	}
@@ -60,7 +62,7 @@ func (m StringAnyMap) DeleteIfValue(condition func(any) bool) {
 	}
 }
 
-func (m StringAnyMap) Has(key string) bool {
+func (m StringAny) Has(key string) bool {
 	if m != nil {
 		if _, exist := m[key]; exist {
 			return true
@@ -69,7 +71,7 @@ func (m StringAnyMap) Has(key string) bool {
 	return false
 }
 
-func (m StringAnyMap) HasKeyAndValue(key string, value any) bool {
+func (m StringAny) HasKeyAndValue(key string, value any) bool {
 	if m != nil {
 		v, exist := m[key]
 		if !exist {
@@ -83,7 +85,7 @@ func (m StringAnyMap) HasKeyAndValue(key string, value any) bool {
 	return false
 }
 
-func (m StringAnyMap) IsSuperSet(m2 map[string]any) bool {
+func (m StringAny) IsSuperSet(m2 map[string]any) bool {
 	if m2 == nil || m == nil {
 		return false
 	}
@@ -96,7 +98,7 @@ func (m StringAnyMap) IsSuperSet(m2 map[string]any) bool {
 	return true
 }
 
-func (m StringAnyMap) Set(key string, value any) StringAnyMap {
+func (m StringAny) Set(key string, value any) StringAny {
 	if m == nil {
 		o := make(map[string]any)
 		o[key] = value
@@ -106,7 +108,7 @@ func (m StringAnyMap) Set(key string, value any) StringAnyMap {
 	return m
 }
 
-func (m StringAnyMap) Get(key string) any {
+func (m StringAny) Get(key string) any {
 	if m == nil {
 		return nil
 	}
@@ -114,7 +116,7 @@ func (m StringAnyMap) Get(key string) any {
 	return v
 }
 
-func (m StringAnyMap) Keys() []string {
+func (m StringAny) Keys() []string {
 	if m == nil {
 		return []string{}
 	}
@@ -125,47 +127,50 @@ func (m StringAnyMap) Keys() []string {
 	return keys
 }
 
-func (m StringAnyMap) Equal(m2 map[string]any) bool {
-	if len(m) != len(m2) {
-		return false
-	}
+func (m StringAny) Equal(m2 map[string]any) bool {
+	return maps.Equal(m, m2)
+	// if len(m) != len(m2) {
+	// 	return false
+	// }
 
-	for k1, v1 := range m {
-		v2, ok := m2[k1]
-		if !ok {
-			return false
-		}
+	// for k1, v1 := range m {
+	// 	v2, ok := m2[k1]
+	// 	if !ok {
+	// 		return false
+	// 	}
 
-		if !reflect.DeepEqual(v1, v2) {
-			return false
-		}
-	}
-	return true
+	// 	if !reflect.DeepEqual(v1, v2) {
+	// 		return false
+	// 	}
+	// }
+	// return true
 }
 
-func (m StringAnyMap) GetInt(key string) int {
-	if m != nil && key != "" {
-		d := m.Get(key)
-		if d != nil {
-			dv, _ := d.(int)
-			return dv
-		}
-	}
-	return 0
+func (m StringAny) GetInt(key string) int {
+	return TypedGet[string, int](m, key)
+	// if m != nil && key != "" {
+	// 	d := m.Get(key)
+	// 	if d != nil {
+	// 		dv, _ := d.(int)
+	// 		return dv
+	// 	}
+	// }
+	// return 0
 }
 
-func (m StringAnyMap) GetString(key string) string {
-	if m != nil && key != "" {
-		d := m.Get(key)
-		if d != nil {
-			dv, _ := d.(string)
-			return dv
-		}
-	}
-	return ""
+func (m StringAny) GetString(key string) string {
+	return TypedGet[string, string](m, key)
+	// if m != nil && key != "" {
+	// 	d := m.Get(key)
+	// 	if d != nil {
+	// 		dv, _ := d.(string)
+	// 		return dv
+	// 	}
+	// }
+	// return ""
 }
 
-func (m StringAnyMap) GetMap(key string) map[string]any {
+func (m StringAny) GetMap(key string) map[string]any {
 	if m != nil && key != "" {
 		d := m.Get(key)
 		if d != nil {
@@ -176,7 +181,7 @@ func (m StringAnyMap) GetMap(key string) map[string]any {
 	return nil
 }
 
-func (m StringAnyMap) GetMapSlice(key string) []map[string]any {
+func (m StringAny) GetMapSlice(key string) []map[string]any {
 	if m != nil && key != "" {
 		d := m.Get(key)
 		if d != nil {
@@ -196,3 +201,13 @@ func (m StringAnyMap) GetMapSlice(key string) []map[string]any {
 	return nil
 }
 
+func (m StringAny) String() string {
+	return json.ToString(m)
+}
+
+func (m StringAny) Decode(d any) error {
+	if m != nil {
+		return mapstructure.Decode(m, d)
+	}
+	return nil
+}

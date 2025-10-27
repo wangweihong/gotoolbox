@@ -1,8 +1,9 @@
 package sliceutil_test
 
 import (
-	"github.com/wangweihong/gotoolbox/pkg/sliceutil"
 	"testing"
+
+	"github.com/wangweihong/gotoolbox/pkg/sliceutil"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -56,10 +57,20 @@ func TestMin(t *testing.T) {
 	})
 }
 
-func TestSliceCount(t *testing.T){
-	Convey("TestMin", t, func() {
-	s := []int{1,2,3}
-	So(sliceutil.SliceContent(s,5),ShouldResemble,s)
-	So(sliceutil.SliceContent(s,1),ShouldResemble,[]int{1})
+func TestSliceCount(t *testing.T) {
+	Convey("TestSliceCount", t, func() {
+		s := []int{1, 2, 3}
+		So(sliceutil.SliceContent(s, 5), ShouldResemble, s)
+		So(sliceutil.SliceContent(s, 1), ShouldResemble, []int{1})
+	})
+}
+
+func TestZeroCount(t *testing.T) {
+	Convey("TestZeroCount", t, func() {
+		s := []int{1, 0, 3, 0}
+		So(sliceutil.ZeroCount(s), ShouldResemble, 2)
+
+		s2 := []string{"1", "", "3", "4"}
+		So(sliceutil.ZeroCount(s2), ShouldResemble, 1)
 	})
 }

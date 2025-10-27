@@ -38,7 +38,7 @@ func TestHttpRequestBuilder_AddQueryParamByObject(t *testing.T) {
 		}
 		params := httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()
 
-		So(maputil.StringInterfaceMap(params).Equal(expect), ShouldBeTrue)
+		So(maputil.StringAny(params).Equal(expect), ShouldBeTrue)
 	})
 }
 
@@ -65,7 +65,7 @@ func TestHttpRequestBuilder_AddQueryParamByObjectEmbedded(t *testing.T) {
 				"page_num":  0,
 				"page_size": 0,
 			}
-			So(maputil.StringInterfaceMap(httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()).Equal(expect), ShouldBeTrue)
+			So(maputil.StringAny(httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()).Equal(expect), ShouldBeTrue)
 		})
 
 		Convey("匿名结构字段设置", func() {
@@ -83,7 +83,7 @@ func TestHttpRequestBuilder_AddQueryParamByObjectEmbedded(t *testing.T) {
 				"page_num":  1,
 				"page_size": 3,
 			}
-			So(maputil.StringInterfaceMap(httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()).Equal(expect), ShouldBeTrue)
+			So(maputil.StringAny(httpcli.NewHttpRequestBuilder().AddQueryParamByObject(ot).Build().GetQueryParams()).Equal(expect), ShouldBeTrue)
 		})
 	})
 }

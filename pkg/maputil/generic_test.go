@@ -100,13 +100,13 @@ func TestInsert(t *testing.T) {
 	})
 }
 
-func TestDeepCopy(t *testing.T) {
-	Convey("DeepCopy", t, func() {
+func TestClone(t *testing.T) {
+	Convey("Clone", t, func() {
 		st := map[string]int{
 			"a": 1,
 			"b": 2,
 		}
-		n := maputil.DeepCopy(st)
+		n := maputil.Clone(st)
 		So(len(n), ShouldEqual, 2)
 
 		maputil.Delete(n, "a")

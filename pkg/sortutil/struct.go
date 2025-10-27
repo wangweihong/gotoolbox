@@ -34,7 +34,7 @@ func FieldTagSort(si any, tag string, asc bool, defaultComparer, condition func(
 			vi, vj := reflect.ValueOf(sl[i]), reflect.ValueOf(sl[j])
 			fi, fj, canCompare := compareutil.IsStructReflectValueCanCompare(vi, vj, field)
 			if canCompare {
-				ret = compareutil.Compare(fi, fj)
+				ret = compareutil.ReflectCompare(fi, fj)
 			}
 			fmt.Printf("canCompare:%v, ret:%v\n", canCompare, ret)
 

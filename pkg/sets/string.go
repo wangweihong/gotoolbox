@@ -18,9 +18,9 @@ func NewString(items ...string) String {
 	return ss
 }
 
-// StringKeySet creates a String from a keys of a map[string](? extends interface{}).
+// StringKeySet creates a String from a keys of a map[string](? extends any).
 // If the value passed in is not actually a map, this will panic.
-func StringKeySet(theMap interface{}) String {
+func StringKeySet(theMap any) String {
 	v := reflect.ValueOf(theMap)
 	ret := String{}
 
@@ -134,6 +134,15 @@ func (s String) HasPrefix(item string) bool {
 	}, item)
 }
 
+func (s String) AllHasPrefix(item string) bool {
+	for key := range s {
+		if !strings.HasPrefix(key, item) {
+			return false
+		}
+	}
+	return true
+}
+
 func (s String) HasSuffix(item string) bool {
 	return s.Match(func(key string, item string) bool {
 		if strings.HasSuffix(key, item) {
@@ -141,6 +150,15 @@ func (s String) HasSuffix(item string) bool {
 		}
 		return false
 	}, item)
+}
+
+func (s String) AllHasSuffix(item string) bool {
+	for key := range s {
+		if !strings.HasSuffix(key, item) {
+			return false
+		}
+	}
+	return true
 }
 
 // sets存在值为item的前缀.

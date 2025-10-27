@@ -2,6 +2,7 @@ package maputil
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 
@@ -19,19 +20,6 @@ func Get[K comparable, V any](m map[K]V, key K) V {
 	// 如果类型不匹配或者空map，返回零值
 	var zeroValue V
 	return zeroValue
-}
-
-func TypedGet[K comparable, T any](m map[K]any, key K) T {
-	var zero T
-
-	if m != nil {
-		if v, exists := m[key]; exists && v != nil {
-			if t, ok := v.(T); ok {
-				return t
-			}
-		}
-	}
-	return zero
 }
 
 func Has[K comparable, V any](m map[K]V, key K) bool {
@@ -58,15 +46,33 @@ func Insert[K comparable, V any](m map[K]V, key K, v V) map[K]V {
 	return m
 }
 
-func DeepCopy[K comparable, V any](m map[K]V) map[K]V {
-	if m == nil {
-		return nil
+func Clone[K comparable, V any](m map[K]V) map[K]V {
+	return maps.Clone(m)
+	// if m == nil {
+	// 	return nil
+	// }
+	// n := make(map[K]V, len(m))
+	// for k, v := range m {
+	// 	n[k] = v
+	// }
+	// return n
+}
+
+// Copy 将src的数据拷贝到dst
+func Copy[K comparable, V any](src map[K]V, dst map[K]V) map[K]V {
+	if src != nil && dst == nil {
+		dst = make(map[K]V, len(src))
 	}
-	n := make(map[K]V, len(m))
-	for k, v := range m {
-		n[k] = v
-	}
-	return n
+	maps.Copy(dst, src)
+	return dst
+	// if m == nil {
+	// 	return nil
+	// }
+	// n := make(map[K]V, len(m))
+	// for k, v := range m {
+	// 	n[k] = v
+	// }
+	// return n
 }
 
 func DeleteIfKey[K comparable, V any](m map[K]V, condition func(d K) bool) {
@@ -120,4 +126,17 @@ func Keys[K generic.Ordered, V any](m map[K]V) []K {
 		return keys[i] < keys[j]
 	})
 	return keys
+}
+
+func TypedGet[K comparable, T any](m map[K]any, key K) T {
+	var zero T
+
+	if m != nil {
+		if v, exists := m[key]; exists && v != nil {
+			if t, ok := v.(T); ok {
+				return t
+			}
+		}
+	}
+	return zero
 }

@@ -1,4 +1,4 @@
-apackage debug
+package debug
 
 import (
 	"os"

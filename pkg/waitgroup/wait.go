@@ -2,6 +2,9 @@ package waitgroup
 
 import (
 	"context"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -123,7 +126,7 @@ func (g *Group) PrintResults() {
 
 func (g *Group) handleWaitGroupCrash(st *Result) {
 	if x := recover(); x != nil {
-		st.Error = fmt.Errorf("runtime panic:%v, stack:%v", x, string(debug.Stack()))
+		st.Error = errors.Errorf("runtime panic:%v, stack:%v", x, string(debug.Stack()))
 	}
 }
 
@@ -147,12 +150,27 @@ func (g *Group) ConvertResultToBatchOutput() BatchOutput {
 type Result struct {
 	Cost  time.Duration
 	Error error
-	Data  interface{}
+	Data  any
 }
 
-func NewResult(data interface{}, err error) Result {
+func NewResult(data any, err error) Result {
 	return Result{
 		Data:  data,
 		Error: err,
 	}
+}
+
+func GetResults[T any](wg *Group) []T {
+	var metaList []T
+	for _, v := range wg.GetResults() {
+		if v.Data != nil {
+			switch data := v.Data.(type) {
+			case []T:
+				metaList = append(metaList, data...)
+			case T:
+				metaList = append(metaList, data)
+			}
+		}
+	}
+	return metaList
 }
