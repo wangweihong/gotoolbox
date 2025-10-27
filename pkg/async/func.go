@@ -18,6 +18,14 @@ func PanicRecover(ctx context.Context, fns ...func()) {
 	}
 }
 
+func Run(ctx context.Context, f func(ctx context.Context)) {
+	go func() {
+		defer PanicRecover(ctx)
+		f(ctx)
+	}()
+
+}
+
 func GoRoutine(ctx context.Context, fs ...func(ctx context.Context)) {
 	for i := range fs {
 		f := fs[i]

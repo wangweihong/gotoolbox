@@ -1,6 +1,10 @@
 package sliceutil
 
-import "github.com/wangweihong/gotoolbox/pkg/sets"
+import (
+	"fmt"
+
+	"github.com/wangweihong/gotoolbox/pkg/sets"
+)
 
 // Unique 去重
 func Unique[T comparable](slice []T) []T {
@@ -227,4 +231,13 @@ func CopyIf[T any](slice []T, condition func(o T) bool) []T {
 		}
 	}
 	return ds
+}
+
+func Strings[T fmt.Stringer](fs []T) []string {
+	strs := make([]string, 0, len(fs))
+	for _, f := range fs {
+		strs = append(strs, f.String())
+	}
+
+	return strs
 }

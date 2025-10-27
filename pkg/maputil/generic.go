@@ -46,6 +46,10 @@ func Insert[K comparable, V any](m map[K]V, key K, v V) map[K]V {
 	return m
 }
 
+func Equal[K comparable, V comparable](m map[K]V, n map[K]V) bool {
+	return maps.Equal(m, n)
+}
+
 func Clone[K comparable, V any](m map[K]V) map[K]V {
 	return maps.Clone(m)
 	// if m == nil {

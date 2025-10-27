@@ -7,3 +7,11 @@ func GenericIndirectValue[T any](p *T) T {
 	}
 	return zero
 }
+
+// 不为空则使用指定的值，否则使用预定值
+func GenericIndirectPrefined[T any](p *T, prefine T) T {
+	if p != nil {
+		return *p
+	}
+	return prefine
+}

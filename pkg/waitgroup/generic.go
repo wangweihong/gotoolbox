@@ -73,7 +73,7 @@ func (g *GenericGroup[T]) DebugReturn() *GenericGroup[T] {
 	return g
 }
 
-func (g *GenericGroup[T]) Wait()  {
+func (g *GenericGroup[T]) Wait() {
 	g.wg.Wait()
 	g.PrintResults()
 
@@ -234,6 +234,21 @@ func (g *GenericGroup[T]) BatchGenericOutput() BatchGenericOutput[T] {
 func RunGenericConcurrently[T any, R any](ctx context.Context, inputs []T, task func(context.Context, T) GenericResult[R], timeouts ...time.Duration) *GenericGroup[R] {
 	wg := NewGenericGroup[R](ctx)
 	for _, input := range inputs {
+		input := input
+		wg.Start(NewGenericFunc("", func(ctx context.Context) GenericResult[R] {
+			return task(ctx, input)
+		}), timeouts...)
+	}
+	wg.Wait()
+	return wg
+}
+
+func RunGenericConcurrentlyCondition[T any, R any](ctx context.Context, inputs []T, condition func(T) bool, task func(context.Context, T) GenericResult[R], timeouts ...time.Duration) *GenericGroup[R] {
+	wg := NewGenericGroup[R](ctx)
+	for _, input := range inputs {
+		if !condition(input) {
+			continue
+		}
 		input := input
 		wg.Start(NewGenericFunc("", func(ctx context.Context) GenericResult[R] {
 			return task(ctx, input)

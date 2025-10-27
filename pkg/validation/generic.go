@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -337,4 +338,32 @@ func IsValidatePhoneNumber(phoneNumber string) bool {
 		return false
 	}
 	return matched
+}
+
+func IsPortValid(port int) bool {
+	return port > 0 && port < 65535
+}
+
+func IsPortsValid(ports []int) bool {
+	for _, port := range ports {
+		if port < 0 || port > 65535 {
+			return false
+		}
+	}
+	return true
+}
+
+func IsPortUsed(port int) bool {
+	address := ":" + strconv.Itoa(int(port))
+
+	tcpAddr, err := net.ResolveTCPAddr("tcp", address)
+	if err != nil {
+		return false
+	}
+	tcpSocket, err := net.ListenTCP("tcp", tcpAddr)
+	if err != nil {
+		return true
+	}
+	tcpSocket.Close()
+	return false
 }
