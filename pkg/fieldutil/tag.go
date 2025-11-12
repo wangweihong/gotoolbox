@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/sets"
 )
 
 // 字段和标签信息
@@ -34,11 +36,13 @@ func (fts FieldTags) ToTagMap() map[string]FieldTag {
 }
 
 // ParseStructFields 从结构体或者结构体指针(指针非空值)中获取其字段以及标签信息
-func ParseStructFieldTags(s any, tagName string) FieldTags {
+func ParseStructFieldTags(s any, tagName string, HideField ...string) FieldTags {
 	fs := ParseStructFieldValues(s)
 	if fs == nil {
 		return nil
 	}
+
+	hideFieldSets := sets.NewString(HideField...)
 
 	fts := make([]FieldTag, 0, len(fs))
 	for _, v := range fs {
@@ -46,12 +50,19 @@ func ParseStructFieldTags(s any, tagName string) FieldTags {
 		if !v.T.IsExported() {
 			continue
 		}
+
+		if hideFieldSets.Has(v.T.Name) {
+			continue
+		}
+
 		tag := v.T.Tag.Get(tagName)
-		if tagName == JsonTag {
-			tag = strings.TrimSuffix(tag, ",omitempty")
-			if tag == "-" {
-				continue
-			}
+		tag = strings.TrimSuffix(tag, ",omitempty")
+		if tag == "-" {
+			continue
+		}
+
+		if hideFieldSets.Has(tag) {
+			continue
 		}
 
 		fts = append(fts, FieldTag{

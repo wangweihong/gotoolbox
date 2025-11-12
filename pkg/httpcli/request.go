@@ -6,17 +6,19 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"time"
 
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"github.com/wangweihong/gotoolbox/pkg/tls/httptls"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/def"
@@ -133,7 +135,99 @@ func (r *HttpRequest) GetTimeout() time.Duration {
 	return r.timeout
 }
 
+// 实现真正的流式表单传输
+func (r *HttpRequest) convertFormBody(ctx context.Context) (*http.Request, error) {
+	// 创建管道实现流式传输
+	// 	使用管道(pipe)实现生产-消费模型
+	// 表单数据生成与网络发送并行
+	// 支持超大文件上传（恒定低内存）
+	pr, pw := io.Pipe()
+	writer := multipart.NewWriter(pw)
+	// 异步写入表单数据
+	go func() {
+		defer pw.Close()
+		defer writer.Close()
+		// 处理表单字段
+		for key, value := range r.GetFormPrams() {
+			if err := value.Write(writer, key); err != nil {
+				pw.CloseWithError(err)
+				return
+			}
+		}
+	}()
+	req, err := http.NewRequestWithContext(ctx, r.GetMethod(), r.GetEndpoint(), pr)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	return req, nil
+}
+
+// 处理文件流
+func (r *HttpRequest) convertStreamBody(ctx context.Context, file *os.File) (*http.Request, error) {
+	// 获取文件信息用于设置Content-Type
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	// 创建请求并设置Content-Length
+	req, err := http.NewRequestWithContext(ctx, r.GetMethod(), r.GetEndpoint(), file)
+	if err != nil {
+		return nil, err
+	}
+
+	// 设置内容类型
+	if contentType := mime.TypeByExtension(filepath.Ext(fileInfo.Name())); contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	req.ContentLength = fileInfo.Size()
+
+	return req, nil
+}
+
 func (r *HttpRequest) ConvertRequestWithContext(ctx context.Context) (*http.Request, error) {
+	var req *http.Request
+	var err error
+	// 优先处理表单数据（包含流式文件上传）
+	if len(r.GetFormPrams()) != 0 {
+		req, err = r.convertFormBody(ctx)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	} else if r.bodyData != nil {
+		// 处理流式文件体
+		if file, ok := r.bodyData.(*os.File); ok {
+			req, err = r.convertStreamBody(ctx, file)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+		} else {
+			// 处理其他类型body
+			buf, err := r.GetBodyToBytes()
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+
+			req, err = http.NewRequestWithContext(ctx, r.GetMethod(), r.GetEndpoint(), buf)
+			if err != nil {
+				return nil, errors.WithStack(err)
+			}
+		}
+	} else {
+		// 无body的请求
+		req, err = http.NewRequestWithContext(ctx, r.GetMethod(), r.GetEndpoint(), nil)
+		if err != nil {
+			return nil, errors.WithStack(err)
+		}
+	}
+
+	r.fillPath(req)
+	r.fillQueryParams(req)
+	r.fillHeaderParams(req)
+	return req, nil
+}
+
+func (r *HttpRequest) ConvertRequestWithContextOld(ctx context.Context) (*http.Request, error) {
 	t := reflect.TypeOf(r.bodyData)
 	if t != nil && t.Kind() == reflect.Ptr {
 		t = t.Elem()
@@ -146,12 +240,12 @@ func (r *HttpRequest) ConvertRequestWithContext(ctx context.Context) (*http.Requ
 	// 2. 如果是表单数据,则请求体转换成表单数据。常用于表单提交, 如需要上传文件,并携带一些文本字段
 	// 3. 其他类型的请求体
 	if r.bodyData != nil && t != nil && t.Name() == "File" {
-		req, err = r.convertStreamBody(ctx)
+		req, err = r.convertStreamBodyOld(ctx)
 		if err != nil {
 			return nil, err
 		}
 	} else if len(r.GetFormPrams()) != 0 {
-		req, err = r.covertFormBody(ctx)
+		req, err = r.covertFormBodyOld(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -180,7 +274,7 @@ func (r *HttpRequest) ConvertRequest() (*http.Request, error) {
 	return r.ConvertRequestWithContext(context.Background())
 }
 
-func (r *HttpRequest) covertFormBody(ctx context.Context) (*http.Request, error) {
+func (r *HttpRequest) covertFormBodyOld(ctx context.Context) (*http.Request, error) {
 	bodyBuffer := &bytes.Buffer{}
 	bodyWriter := multipart.NewWriter(bodyBuffer)
 
@@ -213,7 +307,7 @@ func (r *HttpRequest) covertFormBody(ctx context.Context) (*http.Request, error)
 	return req, nil
 }
 
-func (r *HttpRequest) convertStreamBody(ctx context.Context) (*http.Request, error) {
+func (r *HttpRequest) convertStreamBodyOld(ctx context.Context) (*http.Request, error) {
 	f, ok := r.bodyData.(os.File)
 	if !ok {
 		return nil, errors.New("failed to get stream request body")
@@ -268,7 +362,7 @@ func (r *HttpRequest) Invoke(opts ...CallOption) (*HttpResponse, error) {
 }
 
 func (r *HttpRequest) InvokeWithContext(ctx context.Context, opts ...CallOption) (*HttpResponse, error) {
-	ci := &callInfo{}
+	ci := &CallInfo{}
 	for _, o := range opts {
 		o(ci)
 	}
@@ -309,7 +403,7 @@ func (r *HttpRequest) InvokeWithContext(ctx context.Context, opts ...CallOption)
 	return NewHttpResponse(r, resp), nil
 }
 
-func buildCredentials(c *callInfo) (*tls.Config, error) {
+func buildCredentials(c *CallInfo) (*tls.Config, error) {
 	var creds *tls.Config
 	if c.TlsEnabled {
 		var err error

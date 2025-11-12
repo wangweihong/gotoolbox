@@ -44,6 +44,7 @@ func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli
 			statusCode = rawResp.GetStatusCode()
 			fields["resp_status"] = rawResp.GetStatusCode()
 			fields["resp_length"] = len(rawResp.GetBody())
+			fields["resp_header"] = rawResp.GetHeaders()
 			fields["req_url"] = reqURL
 			fields["req_media_type"] = rawResp.GetHeader("Content-Type")
 			fields["req_addr"] = reqAddr

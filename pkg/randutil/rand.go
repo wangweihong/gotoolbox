@@ -32,6 +32,27 @@ func RandString(runes []rune, size int) string {
 	return string(b)
 }
 
+func RandStringSlice(runes []rune, size int, n int) []string {
+	if n <= 0 {
+		n = 1
+	}
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
+	if runes != nil {
+		letterRunes = runes
+	}
+
+	rets := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		b := make([]rune, size)
+		for i := range b {
+			b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		}
+		rets = append(rets, string(b))
+	}
+	return rets
+}
+
 func RandNumSets(n int) string {
 	if n == 0 {
 		n = 6

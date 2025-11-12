@@ -2,11 +2,12 @@ package httpconfig
 
 import (
 	"crypto/tls"
-	"errors"
+
 	"net/http"
 	"net/url"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"github.com/wangweihong/gotoolbox/pkg/tls/httptls"
 
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/httphandler"
@@ -80,7 +81,7 @@ func (c *HttpConfig) BuildCredentials() (*tls.Config, error) {
 			}
 		}
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 	}
 	return creds, nil

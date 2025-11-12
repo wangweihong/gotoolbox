@@ -145,11 +145,11 @@ func (g *GenericGroup[T]) Start(f GenericFunc[T], timeout ...time.Duration) {
 			// FIXME: 不起作用, 全局超时或者单个超时都只能触发DeadlineExceed
 			switch {
 			case gerrors.Is(ctx.Err(), context.Canceled):
-				ret = NewGenericResult(zero, fmt.Errorf("task canceled by global context"))
+				ret = NewGenericResult(zero, errors.Errorf("task canceled by global context"))
 			case gerrors.Is(ctx.Err(), context.DeadlineExceeded):
-				ret = NewGenericResult(zero, fmt.Errorf("task timed out after %v", time.Since(start).Round(time.Millisecond)))
+				ret = NewGenericResult(zero, errors.Errorf("task timed out after %v", time.Since(start).Round(time.Millisecond)))
 			default:
-				ret = NewGenericResult(zero, fmt.Errorf("task context error: %w", ctx.Err()))
+				ret = NewGenericResult(zero, errors.Errorf("task context error: %w", ctx.Err()))
 			}
 		}
 		g.setResult(f.Name, &ret, start)
@@ -201,6 +201,19 @@ func (g *GenericGroup[T]) GetSuccessResultList() []T {
 		}
 	}
 	return list
+}
+
+func (g *GenericGroup[T]) GetErrorList() errors.Aggregate {
+	g.retLock.Lock()
+	defer g.retLock.Unlock()
+
+	list := make([]error, 0, len(g.results))
+	for _, v := range g.results {
+		if v.Error != nil {
+			list = append(list, v.Error)
+		}
+	}
+	return errors.NewAggregate(list...)
 }
 
 func (g *GenericGroup[T]) GetResultFast() ( /*total*/ int /*success*/, int /*fail*/, int) {

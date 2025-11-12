@@ -2,6 +2,7 @@ package httpcli
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"io"
 	"net/http"
@@ -12,7 +13,6 @@ import (
 
 	"github.com/wangweihong/gotoolbox/pkg/errors"
 	"github.com/wangweihong/gotoolbox/pkg/httpcli/decode"
-	"github.com/wangweihong/gotoolbox/pkg/json"
 )
 
 type HttpResponse struct {
@@ -74,11 +74,25 @@ func (r *HttpResponse) Decode(resp any) error {
 	if data == "" {
 		return errors.New("body data is empty")
 	}
-	byteData := []byte(data)
-	mm := decode.NewMarshalMapping()
-	_ = mm.Register(decode.ApplicationJson, json.Unmarshal)
-	_ = mm.Register(decode.ApplicationXml, xml.Unmarshal)
-	return mm.UnmarshalManifest(r.GetHeader(decode.ContentType), byteData, resp)
+
+	ct := r.GetHeader(decode.ContentType)
+	// mm := decode.NewMarshalMapping()
+	// _ = mm.Register(decode.ApplicationJson, json.Unmarshal)
+	// _ = mm.Register(decode.ApplicationXml, xml.Unmarshal)
+	// err := mm.UnmarshalManifest(r.GetHeader(decode.ContentType), byteData, resp)
+
+	parser, err := globalParserFactory.GetParser(ct)
+	if err != nil {
+		if decode.IsJsonBased(ct) {
+			return json.Unmarshal([]byte(data), resp)
+		} else if decode.IsXmlBased(ct) {
+			return xml.Unmarshal([]byte(data), resp)
+		} else {
+			return errors.WithStack(err)
+		}
+	}
+	err = parser.Unmarshal([]byte(data), resp)
+	return errors.WithStack(err)
 }
 
 func (r *HttpResponse) DownloadFile(saveDir string) error {
@@ -89,19 +103,19 @@ func (r *HttpResponse) DownloadFile(saveDir string) error {
 
 	savePath := filepath.Join(saveDir, fn)
 	if err := os.MkdirAll(saveDir, 0755); err != nil {
-		return errors.Errorf("mkdirAll %v error:%w", saveDir, err)
+		return errors.Errorf("mkdirAll %v error:%v", saveDir, err)
 	}
 
 	file, err := os.Create(savePath)
 	if err != nil {
-		return errors.Errorf("create file %v error:%w", saveDir, err)
+		return errors.Errorf("create file %v error:%v", saveDir, err)
 	}
 	defer file.Close()
 
 	if _, err := io.Copy(file, bytes.NewBuffer([]byte(r.GetBody()))); err != nil {
 		// 删除不完整文件
 		os.Remove(savePath)
-		return errors.Errorf("write file %v error:%w", saveDir, err)
+		return errors.Errorf("write file %v error:%v", saveDir, err)
 	}
 	return nil
 }
@@ -126,19 +140,25 @@ func DownloadFile(responseHeader http.Header, body []byte, saveDir string) error
 
 	savePath := filepath.Join(saveDir, fn)
 	if err := os.MkdirAll(saveDir, 0755); err != nil {
-		return errors.Errorf("mkdirAll %v error:%w", saveDir, err)
+		return errors.Errorf("mkdirAll %v error:%v", saveDir, err)
 	}
 
 	file, err := os.Create(savePath)
 	if err != nil {
-		return errors.Errorf("create file %v error:%w", saveDir, err)
+		return errors.Errorf("create file %v error:%v", saveDir, err)
 	}
 	defer file.Close()
 
 	if _, err := io.Copy(file, bytes.NewBuffer(body)); err != nil {
 		// 删除不完整文件
 		os.Remove(savePath)
-		return errors.Errorf("write file %v error:%w", saveDir, err)
+		return errors.Errorf("write file %v error:%v", saveDir, err)
 	}
 	return nil
+}
+
+var globalParserFactory decode.ParserFactory
+
+func init() {
+	globalParserFactory = decode.NewDefaultParesrFactory()
 }

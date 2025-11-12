@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+	"github.com/wangweihong/gotoolbox/pkg/sliceutil"
+
 	"github.com/go-ping/ping"
 )
 
@@ -20,6 +23,44 @@ func IsIpv4Addr(s string) bool {
 		}
 	}
 	return false
+}
+
+func GetLocalIPs(wantIpv6 bool, condition func(net.Interface) bool) ([]net.IP, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, err
+	}
+
+	ips := make([]net.IP, 0, len(ifaces))
+	for _, iface := range ifaces {
+		if !condition(iface) {
+			continue
+		}
+		addrs, err := iface.Addrs()
+		if err != nil {
+			continue
+		}
+
+		for _, address := range addrs {
+			if ipnet, ok := address.(*net.IPNet); ok {
+				if p4 := ipnet.IP.To4(); len(p4) == net.IPv4len {
+					ips = append(ips, ipnet.IP)
+				} else if len(ipnet.IP) == net.IPv6len && wantIpv6 {
+					ips = append(ips, ipnet.IP)
+				}
+			}
+		}
+	}
+
+	return ips, nil
+}
+
+func GetLocalIPsV2(wantIpv6 bool, skipCondition func(net.Interface) bool) ([]string, error) {
+	ips, err := GetLocalIPs(wantIpv6, skipCondition)
+	if err != nil {
+		return nil, err
+	}
+	return sliceutil.Strings(ips), nil
 }
 
 func GetIPAddrs(wantIpv6 bool) ([]string, error) {
@@ -52,13 +93,13 @@ func GetIPAddrs(wantIpv6 bool) ([]string, error) {
 	return ips, nil
 }
 
-func GetIPAddr(wantIpv6 bool) (string, error) {
+func GetIPAddr(wantIpv6 bool, ifacePrefix []string) (string, error) {
 	ips, err := GetIPAddrs(wantIpv6)
 	if err != nil {
 		return "", err
 	}
 	if len(ips) == 0 {
-		return "", fmt.Errorf("local ips is empty")
+		return "", errors.New("local ips is empty")
 	}
 
 	return ips[0], nil
@@ -102,7 +143,7 @@ func ParseAddrFromURL(rawurl string) (string, error) {
 func GetLocalIP() (string, error) {
 	ips, err := GetIPAddrs(false)
 	if len(ips) == 0 || err != nil {
-		return "", fmt.Errorf("cannot get ip, err:%v", err)
+		return "", errors.Errorf("cannot get ip, err:%v", err)
 	}
 
 	return ips[0], nil

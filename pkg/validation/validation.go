@@ -22,7 +22,7 @@ const (
 )
 
 // Validator is a custom validator for configs.
-type Validator struct {
+type CustomValidator struct {
 	val   *validator.Validate
 	uni   *ut.UniversalTranslator
 	trans ut.Translator
@@ -30,7 +30,7 @@ type Validator struct {
 }
 
 // NewValidator creates a new Validator with default translation.
-func NewValidator() *Validator {
+func NewValidator() *CustomValidator {
 	result := validator.New()
 
 	// default translations
@@ -44,7 +44,7 @@ func NewValidator() *Validator {
 	registerDefaultTranslations(result, uni, LangZH, zh_translations.RegisterDefaultTranslations)
 
 	defaultTranslator, _ := uni.GetTranslator(LangEN)
-	return &Validator{
+	return &CustomValidator{
 		val:   result,
 		uni:   uni,
 		trans: defaultTranslator,
@@ -133,13 +133,13 @@ func TranslateFunc(ut ut.Translator, fe validator.FieldError) string {
 }
 
 // 注册内置默认的校验器, 包括对应的错误翻译
-func (v *Validator) SetDefaultCustomValidator() *Validator {
+func (v *CustomValidator) SetDefaultCustomValidator() *CustomValidator {
 	registerCustomValidators(v.val, v.uni)
 	return v
 }
 
 // SetDefaultTranslater 设置默认翻译器
-func (v *Validator) SetDefaultTranslater(lang string) *Validator {
+func (v *CustomValidator) SetDefaultTranslater(lang string) *CustomValidator {
 	translator, found := v.uni.GetTranslator(lang)
 	if found {
 		v.trans = translator
@@ -163,11 +163,11 @@ func (v *Validator) SetDefaultTranslater(lang string) *Validator {
 }
 
 // RegisterValidation 添加自定义校验器
-func (v *Validator) RegisterValidation(tag string, fn validator.Func, callValidationEvenIfNull ...bool) error {
+func (v *CustomValidator) RegisterValidation(tag string, fn validator.Func, callValidationEvenIfNull ...bool) error {
 	return v.val.RegisterValidation(tag, fn, callValidationEvenIfNull...)
 }
 
-func (v *Validator) GetTranslator(lang string) ut.Translator {
+func (v *CustomValidator) GetTranslator(lang string) ut.Translator {
 	trans, exist := v.uni.GetTranslator(lang)
 	if !exist {
 		//fall back to en
@@ -178,18 +178,18 @@ func (v *Validator) GetTranslator(lang string) ut.Translator {
 
 // RegisterValidation 添加自定义校验器错误翻译
 // 配合RegisterValidation一起使用。 RegisterValidation注册的校验器，只会检测是否成功。依赖于RegisterTranslation注册对应的检验错误信息
-func (v *Validator) RegisterTranslation(tag string, trans ut.Translator, registerFn validator.RegisterTranslationsFunc, translationFn validator.TranslationFunc) error {
+func (v *CustomValidator) RegisterTranslation(tag string, trans ut.Translator, registerFn validator.RegisterTranslationsFunc, translationFn validator.TranslationFunc) error {
 	return v.val.RegisterTranslation(tag, trans, registerFn, translationFn)
 }
 
-func (v *Validator) SetTagName(tag string) {
+func (v *CustomValidator) SetTagName(tag string) {
 	v.val.SetTagName(tag)
 }
 
 // Validate validates config for errors and returns an error (it can be casted to
 // ValidationErrors, containing a list of errors inside). When error is printed as string, it will
 // automatically contains the full list of validation errors.
-func (v *Validator) Validate(data any) field.ErrorList {
+func (v *CustomValidator) Validate(data any) field.ErrorList {
 	// validate policy
 	err := v.val.Struct(data)
 	if err == nil {

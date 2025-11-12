@@ -10,21 +10,13 @@ import (
 	"github.com/wangweihong/gotoolbox/pkg/httpcli"
 )
 
-// 定义Markdown消息的结构体
-type Markdown struct {
-	Title string `json:"title"`
-	Text  string `json:"text"`
-}
+
 
 type Message struct {
 	MsgType  string   `json:"msgtype"`
 	Markdown Markdown `json:"markdown"`
 }
 
-type Result struct {
-	ErrorCode    int    `json:"errcode"`
-	ErrorMessage string `json:"errmsg"`
-}
 
 func Send(message Message, dingTalkRobotURL string, secret string, key string) error {
 	if key != "" {

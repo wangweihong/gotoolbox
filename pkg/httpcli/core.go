@@ -38,7 +38,7 @@ func NewClient(cfg *httpconfig.HttpConfig, options ...Option) (*Client, error) {
 	} else {
 		creds, err := c.config.BuildCredentials()
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		tr.Proxy = c.config.HttpProxy
 		tr.TLSClientConfig = creds
@@ -52,7 +52,7 @@ func NewClient(cfg *httpconfig.HttpConfig, options ...Option) (*Client, error) {
 	if c.config.RecordCookies {
 		jar, err := cookiejar.New(nil)
 		if err != nil {
-			return nil, err
+			return nil, errors.WithStack(err)
 		}
 		c.conn.Jar = jar
 	}
@@ -83,6 +83,7 @@ func (c *Client) Invoke(
 	var err error
 	var rawResp *HttpResponse
 
+	//FIXME: 是否采用拦截器来处理?
 	if logEnabled() {
 		caller := map[string]any{"caller": callerutil.CallersDepth(20, 3).List()}
 		//debugLog(ctx, caller, "Client Invoke Called")
@@ -92,12 +93,12 @@ func (c *Client) Invoke(
 		}()
 	}
 
-	//  允许特定请求单独设置拦截器
-	ci := &callInfo{}
+	ci := &CallInfo{}
 	for _, o := range opts {
 		o(ci)
 	}
 
+	//  允许特定请求单独设置拦截器来覆盖客户端的拦截器
 	chainInterceptors := c.chainInterceptors
 	if ci.chainInterceptors != nil {
 		chainInterceptors = ci.chainInterceptors
@@ -117,7 +118,6 @@ func (c *Client) Invoke(
 	}
 
 	rawResp, err = invokeLogWrapper(ctx, req, arg, reply, c, opts...)
-
 	return rawResp, errors.WithStack(err)
 }
 
@@ -167,7 +167,7 @@ func invoke(
 	c *Client,
 	opt ...CallOption,
 ) (*HttpResponse, error) {
-	ci := &callInfo{}
+	ci := &CallInfo{}
 	for _, o := range opt {
 		o(ci)
 	}
@@ -204,7 +204,7 @@ func invoke(
 	return NewHttpResponse(req, resp), nil
 }
 
-func (c *Client) preRequestProcess(req *http.Request, info *callInfo) error {
+func (c *Client) preRequestProcess(req *http.Request, info *CallInfo) error {
 	if info != nil && info.httpRequestProcess != nil {
 		if _, err := info.httpRequestProcess(req); err != nil {
 			return errors.Wrap(err, "process request before invoke fail")
@@ -217,7 +217,7 @@ func (c *Client) preRequestProcess(req *http.Request, info *callInfo) error {
 	return c.config.HttpHandler.RequestHandlers(req)
 }
 
-func (c *Client) postRequestProcess(resp *http.Response, info *callInfo) error {
+func (c *Client) postRequestProcess(resp *http.Response, info *CallInfo) error {
 	if c.config.HttpHandler == nil || c.config.HttpHandler.ResponseHandlers == nil || resp == nil {
 		return nil
 	}

@@ -105,22 +105,71 @@ func (builder *HttpRequestBuilder) AddQueryParamByObject(input any) *HttpRequest
 		if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
 			continue
 		}
-		key := fieldType.Name
-		jsonTag := fieldType.Tag.Get("json")
+
+		jsonTag := fieldType.Tag.Get("form")
 		if jsonTag != "" {
 			if fieldValue.IsZero() && strings.Contains(jsonTag, ",omitempty") {
 				continue
 			}
-			key = strings.TrimPrefix(jsonTag, ",omitempty")
+			key := strings.TrimPrefix(jsonTag, ",omitempty")
+			builder.httpRequest.queryParams[key] = fieldValue.Interface()
 		}
 
-		builder.httpRequest.queryParams[key] = fieldValue.Interface()
 	}
 	return builder
 }
 
 func (builder *HttpRequestBuilder) AddPathParam(key string, value string) *HttpRequestBuilder {
 	builder.httpRequest.pathParams[key] = value
+	return builder
+}
+
+func (builder *HttpRequestBuilder) AddPathParamByObject(input any) *HttpRequestBuilder {
+	if input == nil {
+		return builder
+	}
+
+	v := reflect.ValueOf(input)
+	if v.Kind() == reflect.Ptr {
+		v = v.Elem()
+	}
+
+	t := v.Type()
+	if t.Kind() != reflect.Struct {
+		return builder
+	}
+	for i := 0; i < v.NumField(); i++ {
+		fieldValue := v.Field(i)
+		fieldType := t.Field(i)
+
+		if !fieldType.IsExported() {
+			continue
+		}
+
+		// 如果字段是匿名结构体
+		if fieldType.Type.Kind() == reflect.Struct && fieldType.Anonymous {
+			fieldBuilder := NewHttpRequestBuilder().AddPathParamByObject(fieldValue.Interface())
+			for k, v := range fieldBuilder.httpRequest.pathParams {
+				builder.httpRequest.pathParams[k] = v
+			}
+			continue
+		}
+
+		// 忽略空指针
+		if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
+			continue
+		}
+
+		jsonTag := fieldType.Tag.Get("path")
+		if jsonTag != "" {
+			if fieldValue.IsZero() && strings.Contains(jsonTag, ",omitempty") {
+				continue
+			}
+			key := strings.TrimPrefix(jsonTag, ",omitempty")
+			builder.httpRequest.pathParams[key] = fmt.Sprintf("%v", fieldValue.Interface())
+		}
+
+	}
 	return builder
 }
 

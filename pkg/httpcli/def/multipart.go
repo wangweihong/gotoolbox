@@ -114,3 +114,18 @@ func (m FilePartitionPart) Write(w *multipart.Writer, name string) error {
 	}
 	return err
 }
+
+// 实现StreamFilePart（流式文件包装器）
+type StreamFilePart struct {
+	io.Reader
+	Filename string
+}
+
+func (f *StreamFilePart) Write(w *multipart.Writer, fieldname string) error {
+	part, err := w.CreateFormFile(fieldname, f.Filename)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(part, f)
+	return err
+}

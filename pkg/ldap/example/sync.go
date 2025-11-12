@@ -40,13 +40,12 @@ func syncLDAPGroup(ldapGroups []ldap.Group) waitgroup.BatchOutput {
 		}
 	}
 
-	ctx := context.Background()
 	wg := waitgroup.NewWaitGroup(context.Background())
 	for k, u := range mappers {
 		u, k := u, k
 
 		if u.LDAP != nil && u.Cache == nil {
-			wg.Start(waitgroup.NewWaitGroupHandleFunc(context.Background(), "", func() waitgroup.Result {
+			wg.Start(waitgroup.NewFunc("", func(ctx context.Context) waitgroup.Result {
 				tmp := Group{
 					Name:   k,
 					IsLDAP: true,
@@ -59,7 +58,7 @@ func syncLDAPGroup(ldapGroups []ldap.Group) waitgroup.BatchOutput {
 		}
 
 		if u.Cache != nil && u.LDAP == nil {
-			wg.Start(waitgroup.NewWaitGroupHandleFunc(ctx, "", func() waitgroup.Result {
+			wg.Start(waitgroup.NewFunc("", func(ctx context.Context) waitgroup.Result {
 				if err := CacheInstance.DeleteGroup(u.Cache.UUID); err != nil {
 					return waitgroup.NewResult("ldap group delete:"+k, err)
 				}
@@ -135,7 +134,7 @@ func syncLdapUser(ldapUsers []ldap.Account) waitgroup.BatchOutput {
 			}
 			// LDAP用户组已经更新, 本地进行同步
 			if changed {
-				wg.Start(waitgroup.NewWaitGroupHandleFunc(ctx, "", func() waitgroup.Result {
+				wg.Start(waitgroup.NewFunc("", func(ctx context.Context) waitgroup.Result {
 					u.Cache.UserGroup = newGroupIDS.List()
 					if err := CacheInstance.UpdateUser(u.Cache); err != nil {
 						return waitgroup.NewResult("ldap update user:"+k, err)
@@ -148,7 +147,7 @@ func syncLdapUser(ldapUsers []ldap.Account) waitgroup.BatchOutput {
 		}
 		//ldap has user not exist in cache. need to create.
 		if u.LDAP != nil {
-			wg.Start(waitgroup.NewWaitGroupHandleFunc(ctx, "", func() waitgroup.Result {
+			wg.Start(waitgroup.NewFunc("", func(ctx context.Context) waitgroup.Result {
 				var groupIDs []string
 				newGroupIDS := sets.NewString()
 				for _, eg := range u.LDAP.Group {
@@ -179,7 +178,7 @@ func syncLdapUser(ldapUsers []ldap.Account) waitgroup.BatchOutput {
 		}
 		// cache user not exist in ldap
 		if u.Cache != nil {
-			wg.Start(waitgroup.NewWaitGroupHandleFunc(ctx, "", func() waitgroup.Result {
+			wg.Start(waitgroup.NewFunc("", func(ctx context.Context) waitgroup.Result {
 				if err := CacheInstance.DeleteUser(u.Cache.UUID); err != nil {
 					return waitgroup.NewResult("ldap Delete user:"+k, err)
 				}

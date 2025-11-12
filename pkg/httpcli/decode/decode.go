@@ -1,7 +1,10 @@
 package decode
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"mime"
+	"strings"
 	"sync"
 
 	"github.com/wangweihong/gotoolbox/pkg/errors"
@@ -21,6 +24,24 @@ func NewMarshalMapping() *MarshalMapping {
 	return &MarshalMapping{
 		mappings: make(map[string]UnmarshalFunc),
 	}
+}
+
+func NewDefaultMarshalMapping() *MarshalMapping {
+	mm := &MarshalMapping{
+		mappings: make(map[string]UnmarshalFunc),
+	}
+	// 核心JSON解析器
+	_ = mm.Register("application/json", json.Unmarshal)
+
+	// Docker镜像格式支持
+	_ = mm.Register("application/vnd.docker.distribution.manifest.v1+json", json.Unmarshal)
+	_ = mm.Register("application/vnd.docker.distribution.manifest.v2+json", json.Unmarshal)
+	_ = mm.Register("application/vnd.docker.distribution.manifest.list.v2+json", json.Unmarshal)
+
+	// 其他格式支持
+	_ = mm.Register("application/xml", xml.Unmarshal)
+	_ = mm.Register("text/xml", xml.Unmarshal)
+	return mm
 }
 
 type MarshalMapping struct {
@@ -78,4 +99,34 @@ func (mm *MarshalMapping) UnmarshalManifest(ctHeader string, p []byte, arg any) 
 	}
 
 	return unmarshalFunc(p, arg)
+}
+
+func IsJsonBased(contentType string) bool {
+	jsonTypes := []string{
+		"application/json",
+		"application/vnd.docker.distribution.manifest.v1+json",
+		"application/vnd.docker.distribution.manifest.v2+json",
+		"application/vnd.docker.distribution.manifest.list.v2+json",
+	}
+
+	for _, t := range jsonTypes {
+		if strings.Contains(contentType, t) {
+			return true
+		}
+	}
+	return false
+}
+
+func IsXmlBased(contentType string) bool {
+	jsonTypes := []string{
+		"application/xml",
+		"text/xml",
+	}
+
+	for _, t := range jsonTypes {
+		if strings.Contains(contentType, t) {
+			return true
+		}
+	}
+	return false
 }

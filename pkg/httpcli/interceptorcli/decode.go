@@ -2,7 +2,6 @@ package interceptorcli
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/wangweihong/gotoolbox/pkg/errors"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/wangweihong/gotoolbox/pkg/skipper"
 )
 
-func StatusCodeInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli.Interceptor {
+func DecodeResponseInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli.Interceptor {
 	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply any, cc *httpcli.Client,
 		invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
 		if skipper.Skip(req.GetPath(), skipperFunc...) {
@@ -24,8 +23,10 @@ func StatusCodeInterceptor(name string, skipperFunc ...skipper.SkipperFunc) http
 			return rawResp, errors.WithStack(err)
 		}
 
-		if rawResp.GetStatusCode() != http.StatusOK {
-			return rawResp, errors.Errorf("status code not 200, is %v, response body:%v", rawResp.GetStatusCode(), rawResp.GetBody())
+		if reply != nil {
+			if err := rawResp.Decode(reply); err != nil {
+				return rawResp, errors.WithStack(err)
+			}
 		}
 
 		return rawResp, nil
