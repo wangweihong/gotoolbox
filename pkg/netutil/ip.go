@@ -1,6 +1,7 @@
 package netutil
 
 import (
+	"encoding/binary"
 	"fmt"
 	"net"
 	"net/url"
@@ -164,4 +165,39 @@ func PingV2(ip string) bool {
 	}
 	stats := pinger.Statistics()
 	return stats.PacketsRecv > 0
+}
+
+func GetIPRange(startIP, endIP string) ([]string, error) {
+	start := net.ParseIP(startIP)
+	end := net.ParseIP(endIP)
+	if start == nil || end == nil {
+		return nil, errors.Errorf("invalid ip address")
+	}
+
+	start = start.To4()
+	end = end.To4()
+	if start == nil || end == nil {
+		return nil, errors.Errorf("only support ipv4")
+	}
+
+	startInt := binary.BigEndian.Uint32(start)
+	endInt := binary.BigEndian.Uint32(end)
+
+	if startInt > endInt {
+		return nil, errors.Errorf("start ip must start before end ip")
+	}
+
+	count := endInt - startInt + 1
+
+	if count > 1000000 {
+		return nil, errors.Errorf("ip range too large")
+	}
+	ipList := make([]string, 0, count)
+	for current := startInt; current <= endInt; current++ {
+		ipBytes := make(net.IP, 4)
+		binary.BigEndian.PutUint32(ipBytes, current)
+		ipList = append(ipList, ipBytes.String())
+	}
+
+	return ipList, nil
 }

@@ -1,5 +1,7 @@
 package typeutil
 
+import "strconv"
+
 func GenericIndirectValue[T any](p *T) T {
 	var zero T
 	if p != nil {
@@ -14,4 +16,14 @@ func GenericIndirectPrefined[T any](p *T, prefine T) T {
 		return *p
 	}
 	return prefine
+}
+
+func MustAtoi(d string) int {
+	r, _ := strconv.Atoi(d)
+	return r
+}
+
+func MustAtoi64(d string) int64 {
+	r, _ := strconv.Atoi(d)
+	return int64(r)
 }

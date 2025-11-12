@@ -241,3 +241,9 @@ func Strings[T fmt.Stringer](fs []T) []string {
 
 	return strs
 }
+
+
+
+func Append[T any](s []T, list ...T) []T {
+	return append(s, list...)
+}
