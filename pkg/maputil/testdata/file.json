@@ -1,0 +1,121 @@
+{
+    "fields": {
+      "sprint": ["202408","2024011"],
+      "components": [{
+        "description": "控制系统",
+        "id": "10202",
+        "name": "controller",
+        "self": "https://example.com/rest/api/2/component/10202"
+      }, {
+        "description": "分布式存储平台",
+        "id": "10204",
+        "name": "storage",
+        "self": "https://example.com/rest/api/2/component/10204"
+      }],
+      "created": "2024-08-16T16:54:17.000+0800",
+      "creator": {
+        "active": true,
+        "avatarUrls": {
+          "16x16": "https://www.gravatar.com/avatar/55e3061b00490b7c08487aba4216be74?d=mm\u0026s=16",
+          "24x24": "https://www.gravatar.com/avatar/55e3061b00490b7c08487aba4216be74?d=mm\u0026s=24",
+          "32x32": "https://www.gravatar.com/avatar/55e3061b00490b7c08487aba4216be74?d=mm\u0026s=32",
+          "48x48": "https://www.gravatar.com/avatar/55e3061b00490b7c08487aba4216be74?d=mm\u0026s=48"
+        },
+        "displayName": "用户2",
+        "emailAddress": "user1g@example.com.cn",
+        "key": "JIRAUSER10180",
+        "name": "用户2",
+        "self": "https://example.com/rest/api/2/user?username=%E9%82%B5%E4%B8%BD%E8%8A%B3",
+        "timeZone": "Asia/Shanghai"
+      },
+      "customfield_10109": ["com.atlassian.greenhopper.service.sprint.Sprint@ef427e7[id=64,rapidViewId=20,state=ACTIVE,name=产品_2409周期,startDate=2024-08-01T17:16:00.000+08:00,endDate=2024-09-30T17:16:00.000+08:00,completeDate=\u003cnull\u003e,activatedDate=2024-08-01T17:16:55.793+08:00,sequence=64,goal=\u003cnull\u003e,synced=false,autoStartStop=true,incompleteIssuesDestinationId=-1]"],
+      "customfield_10202": {
+        "archived": false,
+        "description": "",
+        "id": "11012",
+        "name": "v3.7.0.g2409",
+        "releaseDate": "2024-09-30",
+        "released": false,
+        "self": "https://example.com/rest/api/2/version/11012"
+      },
+      "customfield_10501": [{
+        "disabled": false,
+        "id": "10203",
+        "self": "https://example.com/rest/api/2/customFieldOption/10203",
+        "value": "产品"
+      }],
+      "customfield_10600": [{
+        "active": true,
+        "avatarUrls": {
+          "16x16": "https://example.com/secure/useravatar?size=xsmall\u0026avatarId=10334",
+          "24x24": "https://example.com/secure/useravatar?size=small\u0026avatarId=10334",
+          "32x32": "https://example.com/secure/useravatar?size=medium\u0026avatarId=10334",
+          "48x48": "https://example.com/secure/useravatar?avatarId=10334"
+        },
+        "displayName": "用户1",
+        "emailAddress": "user1@example.com.cn",
+        "key": "JIRAUSER10157",
+        "name": "用户1",
+        "self": "https://example.com/rest/api/2/user?username=%E6%9E%97%E6%B1%89%E6%BA%90",
+        "timeZone": "Asia/Shanghai"
+      }],
+      "customfield_11307": {
+        "disabled": false,
+        "id": "10507",
+        "self": "https://example.com/rest/api/2/customFieldOption/10507",
+        "value": "版本遗留"
+      },
+      "customfield_11801": {
+        "disabled": false,
+        "id": "10707",
+        "self": "https://example.com/rest/api/2/customFieldOption/10707",
+        "value": "一般"
+      },
+      "issuetype": {
+        "avatarId": 11317,
+        "description": "",
+        "iconUrl": "https://example.com/secure/viewavatar?size=xsmall\u0026avatarId=11317\u0026avatarType=issuetype",
+        "id": "10100",
+        "name": "缺陷",
+        "self": "https://example.com/rest/api/2/issuetype/10100",
+        "subtask": false
+      },
+      "project": {
+        "avatarUrls": {
+          "16x16": "https://example.com/secure/projectavatar?size=xsmall\u0026pid=10501\u0026avatarId=10009",
+          "24x24": "https://example.com/secure/projectavatar?size=small\u0026pid=10501\u0026avatarId=10009",
+          "32x32": "https://example.com/secure/projectavatar?size=medium\u0026pid=10501\u0026avatarId=10009",
+          "48x48": "https://example.com/secure/projectavatar?pid=10501\u0026avatarId=10009"
+        },
+        "id": "10501",
+        "key": "PRODUCT1",
+        "name": "产品1",
+        "projectCategory": {
+          "description": "",
+          "id": "10000",
+          "name": " 产品",
+          "self": "https://example.com/rest/api/2/projectCategory/10000"
+        },
+        "projectTypeKey": "software",
+        "self": "https://example.com/rest/api/2/project/10501"
+      },
+      "status": {
+        "description": "",
+        "iconUrl": "https://example.com/images/icons/statuses/generic.png",
+        "id": "11201",
+        "name": "问题审核",
+        "self": "https://example.com/rest/api/2/status/11201",
+        "statusCategory": {
+          "colorName": "inprogress",
+          "id": 4,
+          "key": "indeterminate",
+          "name": "处理中",
+          "self": "https://example.com/rest/api/2/statuscategory/4"
+        }
+      }
+    },
+    "key": "PRODUCT1-2130",
+    "id": 1233,
+    "slicestring":["s1","s2"],
+    "intstring":[15,16]
+  }

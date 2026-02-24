@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func ConvertInterfaceToString(value interface{}) string {
+func ConvertInterfaceToString(value any) string {
 	if value == nil {
 		return ""
 	}
@@ -48,4 +48,67 @@ func ConvertInterfaceToString(value interface{}) string {
 		}
 		return strings.Trim(string(b[:]), "\"")
 	}
+}
+
+func InterfaceToInt(di any) int {
+	data := 0
+	if di != nil {
+		df, _ := di.(int)
+		data = df
+	}
+	return data
+}
+
+func InterfaceToString(di any) string {
+	data := ""
+	if di != nil {
+		df, _ := di.(string)
+		data = df
+	}
+	return data
+}
+
+func InterfaceToMapStringInterface(di any) map[string]any {
+	data := make(map[string]any)
+	if di != nil {
+		df, _ := di.(map[string]any)
+		if df != nil {
+			data = df
+		}
+	}
+	return data
+}
+
+func SliceInterfaceToIntType(di ...any) []int {
+	slice := make([]int, 0, len(di))
+	for _, v := range di {
+		d := InterfaceToInt(v)
+		slice = append(slice, d)
+	}
+	return slice
+}
+
+func SliceIntToInterfaceType(di ...int) []any {
+	slice := make([]any, 0, len(di))
+	for _, v := range di {
+		slice = append(slice, v)
+	}
+	return slice
+}
+
+func SliceInterfaceToStringType(di ...any) []string {
+	slice := make([]string, 0, len(di))
+	for _, v := range di {
+		d := InterfaceToString(v)
+		slice = append(slice, d)
+	}
+	return slice
+}
+
+func SliceStringToInterfaceType(di ...string) []any {
+	slice := make([]any, 0, len(di))
+	for _, v := range di {
+		slice = append(slice, v)
+	}
+	return slice
 }

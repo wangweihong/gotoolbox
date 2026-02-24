@@ -13,7 +13,7 @@ import (
 type WorkequeueSyncer struct {
 	period      time.Duration
 	stopCh      <-chan struct{}
-	syncAction  func(arg interface{}) error
+	syncAction  func(arg any) error
 	syncResult  *sequential.List
 	queue       workqueue.Interface
 	threadiness int
@@ -25,7 +25,7 @@ func NewWorkequeueSyncer(
 	// 如果action为更新对象之类的动作, 应通过arg传递对象ID
 	// action根据id获取最新的对象, 再进行更新。
 	// 因为同一个对象多次插入队列(dirty/process), 后续的插入会被忽略
-	action func(arg interface{}) error,
+	action func(arg any) error,
 	queue workqueue.Interface,
 	internal time.Duration,
 	threadiness int,
@@ -63,7 +63,7 @@ func (u *WorkequeueSyncer) Run(stop <-chan struct{}) {
 }
 
 // Trigger trigger syncer action.
-func (u *WorkequeueSyncer) Trigger(arg interface{}, auto bool) bool {
+func (u *WorkequeueSyncer) Trigger(arg any, auto bool) bool {
 	u.queue.Add(arg)
 	return false
 }
@@ -95,7 +95,7 @@ func (u *WorkequeueSyncer) processNextItem() bool {
 }
 
 // 检查是否发生错误，并确保我们稍后重试.
-func (u *WorkequeueSyncer) handleErr(err error, key interface{}) {
+func (u *WorkequeueSyncer) handleErr(err error, key any) {
 	if err == nil {
 		return
 	}
@@ -113,7 +113,7 @@ func (u *WorkequeueSyncer) GetRecords() []SyncInfo {
 	return rs
 }
 
-func (u *WorkequeueSyncer) startRecord(auto bool, key interface{}) int {
+func (u *WorkequeueSyncer) startRecord(auto bool, key any) int {
 	u.lock.Lock()
 	defer u.lock.Unlock()
 

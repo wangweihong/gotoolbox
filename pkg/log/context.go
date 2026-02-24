@@ -43,7 +43,7 @@ func FromContext(ctx context.Context) Logger {
 // 这里采用的是复制父辈的fields, 相互隔离不影响。因此尽可能不要在fieldsCtx中存放过多的数据，
 // WithFields returns a copy of context which inject fields to FieldKeyCtx. If parent has FieldKeyCtx, copy it into
 // current one.
-func WithFields(ctx context.Context, fields map[string]interface{}) context.Context {
+func WithFields(ctx context.Context, fields map[string]any) context.Context {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
@@ -52,13 +52,13 @@ func WithFields(ctx context.Context, fields map[string]interface{}) context.Cont
 		return ctx
 	}
 
-	fieldMap := make(map[string]interface{})
+	fieldMap := make(map[string]any)
 	for k, v := range fields {
 		fieldMap[k] = v
 	}
 
 	if originFields := ctx.Value(FieldKeyCtx{}); originFields != nil {
-		if parentFieldMap, ok := originFields.(map[string]interface{}); ok {
+		if parentFieldMap, ok := originFields.(map[string]any); ok {
 			for k, v := range parentFieldMap {
 				fieldMap[k] = v
 			}
@@ -68,7 +68,7 @@ func WithFields(ctx context.Context, fields map[string]interface{}) context.Cont
 }
 
 // WithFieldPair returns a copy of context which inject key and value to fieldCtx.
-func WithFieldPair(ctx context.Context, key string, value interface{}) context.Context {
+func WithFieldPair(ctx context.Context, key string, value any) context.Context {
 	if ctx == nil {
 		ctx = context.TODO()
 	}
@@ -77,10 +77,10 @@ func WithFieldPair(ctx context.Context, key string, value interface{}) context.C
 		return ctx
 	}
 
-	fieldMap := make(map[string]interface{})
+	fieldMap := make(map[string]any)
 	if fields := ctx.Value(FieldKeyCtx{}); fields != nil {
 		// copy parent fieldmap, don't bother parent fieldmap
-		if parentFieldMap, ok := fields.(map[string]interface{}); ok {
+		if parentFieldMap, ok := fields.(map[string]any); ok {
 			for k, v := range parentFieldMap {
 				fieldMap[k] = v
 			}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -22,8 +24,8 @@ type InfoLogger interface {
 	// variable information.  The key/value pairs should alternate string
 	// keys and arbitrary values.
 	Info(msg string, fields ...Field)
-	Infof(format string, v ...interface{})
-	Infow(msg string, keysAndValues ...interface{})
+	Infof(format string, v ...any)
+	Infow(msg string, keysAndValues ...any)
 
 	// Enabled tests whether this InfoLogger is enabled.  For example,
 	// commandline flags might be used to set the logging verbosity and disable
@@ -38,20 +40,20 @@ type Logger interface {
 	// example, logger.Info() produces the same result as logger.V(0).Info.
 	InfoLogger
 	Debug(msg string, fields ...Field)
-	Debugf(format string, v ...interface{})
-	Debugw(msg string, keysAndValues ...interface{})
+	Debugf(format string, v ...any)
+	Debugw(msg string, keysAndValues ...any)
 	Warn(msg string, fields ...Field)
-	Warnf(format string, v ...interface{})
-	Warnw(msg string, keysAndValues ...interface{})
+	Warnf(format string, v ...any)
+	Warnw(msg string, keysAndValues ...any)
 	Error(msg string, fields ...Field)
-	Errorf(format string, v ...interface{})
-	Errorw(msg string, keysAndValues ...interface{})
+	Errorf(format string, v ...any)
+	Errorw(msg string, keysAndValues ...any)
 	Panic(msg string, fields ...Field)
-	Panicf(format string, v ...interface{})
-	Panicw(msg string, keysAndValues ...interface{})
+	Panicf(format string, v ...any)
+	Panicw(msg string, keysAndValues ...any)
 	Fatal(msg string, fields ...Field)
-	Fatalf(format string, v ...interface{})
-	Fatalw(msg string, keysAndValues ...interface{})
+	Fatalf(format string, v ...any)
+	Fatalw(msg string, keysAndValues ...any)
 
 	// V returns an InfoLogger value for a specific verbosity level.  A higher
 	// verbosity level means a log message is less important.  It's illegal to
@@ -61,7 +63,7 @@ type Logger interface {
 
 	// WithValues adds some key-value pairs of context to a logger.
 	// See Info for documentation on how key/value pairs work.
-	WithValues(keysAndValues ...interface{}) Logger
+	WithValues(keysAndValues ...any) Logger
 
 	// WithName adds a new element to the logger's name.
 	// Successive calls with WithName continue to append
@@ -83,10 +85,10 @@ var _ Logger = &zapLogger{}
 // noopInfoLogger is a logr.InfoLogger that's always disabled, and does nothing.
 type noopInfoLogger struct{}
 
-func (l *noopInfoLogger) Enabled() bool                    { return false }
-func (l *noopInfoLogger) Info(_ string, _ ...Field)        {}
-func (l *noopInfoLogger) Infof(_ string, _ ...interface{}) {}
-func (l *noopInfoLogger) Infow(_ string, _ ...interface{}) {}
+func (l *noopInfoLogger) Enabled() bool             { return false }
+func (l *noopInfoLogger) Info(_ string, _ ...Field) {}
+func (l *noopInfoLogger) Infof(_ string, _ ...any)  {}
+func (l *noopInfoLogger) Infow(_ string, _ ...any)  {}
 
 var disabledInfoLogger = &noopInfoLogger{}
 
@@ -110,13 +112,13 @@ func (l *infoLogger) Info(msg string, fields ...Field) {
 	}
 }
 
-func (l *infoLogger) Infof(format string, args ...interface{}) {
+func (l *infoLogger) Infof(format string, args ...any) {
 	if checkedEntry := l.log.Check(l.level, fmt.Sprintf(format, args...)); checkedEntry != nil {
 		checkedEntry.Write()
 	}
 }
 
-func (l *infoLogger) Infow(msg string, keysAndValues ...interface{}) {
+func (l *infoLogger) Infow(msg string, keysAndValues ...any) {
 	if checkedEntry := l.log.Check(l.level, msg); checkedEntry != nil {
 		checkedEntry.Write(handleFields(l.log, keysAndValues)...)
 	}
@@ -133,7 +135,7 @@ type zapLogger struct {
 // handleFields converts a bunch of arbitrary key-value pairs into Zap fields.  It takes
 // additional pre-converted Zap fields, for use with automatically attached fields, like
 // `error`.
-func handleFields(l *zap.Logger, args []interface{}, additional ...zap.Field) []zap.Field {
+func handleFields(l *zap.Logger, args []any, additional ...zap.Field) []zap.Field {
 	// a slightly modified version of zap.SugaredLogger.sweetenFields
 	if len(args) == 0 {
 		// fast-return if we have no suggared fields.
@@ -186,6 +188,24 @@ var (
 	mu  sync.Mutex
 )
 
+func ensureOutputPathsDirs(outputPaths []string) {
+	for _, path := range outputPaths {
+		if path == "stdout" || path == "stderr" {
+			continue
+		}
+		if filepath.IsAbs(path) {
+			dir := filepath.Dir(path)
+			if _, err := os.Stat(dir); os.IsNotExist(err) {
+				err = os.MkdirAll(dir, 0755)
+				if err != nil {
+					panic(fmt.Sprintf("failed to create log directory %v: %v", path, err.Error()))
+				}
+			}
+		}
+	}
+
+}
+
 // Init initializes logger with specified options.
 func Init(opts *Options) {
 	mu.Lock()
@@ -198,6 +218,9 @@ func New(opts *Options) *zapLogger {
 	if opts == nil {
 		opts = NewOptions()
 	}
+
+	ensureOutputPathsDirs(opts.OutputPaths)
+	ensureOutputPathsDirs(opts.ErrorOutputPaths)
 
 	var zapLevel zapcore.Level
 	if err := zapLevel.UnmarshalText([]byte(opts.Level)); err != nil {
@@ -308,16 +331,16 @@ func (l *zapLogger) Write(p []byte) (n int, err error) {
 }
 
 // WithValues creates a child logger and adds adds Zap fields to it.
-func WithValues(keysAndValues ...interface{}) Logger { return std.WithValues(keysAndValues...) }
+func WithValues(keysAndValues ...any) Logger { return std.WithValues(keysAndValues...) }
 
 // WithValuesM creates a child logger and adds adds Zap fields to it.
-func WithValuesM(fields map[string]interface{}) Logger {
+func WithValuesM(fields map[string]any) Logger {
 	return std.WithValuesM(fields)
 }
 
 // NOTE 这里会创建一个新的 zapLogger copy,不影响原来的.
-func (l *zapLogger) WithValuesM(fields map[string]interface{}) Logger {
-	keysAndValues := make([]interface{}, 0, len(fields)*2)
+func (l *zapLogger) WithValuesM(fields map[string]any) Logger {
+	keysAndValues := make([]any, 0, len(fields)*2)
 	for k, v := range fields {
 		keysAndValues = append(keysAndValues, k)
 		keysAndValues = append(keysAndValues, v)
@@ -326,7 +349,7 @@ func (l *zapLogger) WithValuesM(fields map[string]interface{}) Logger {
 	return l.WithValues(keysAndValues...)
 }
 
-func (l *zapLogger) WithValues(keysAndValues ...interface{}) Logger {
+func (l *zapLogger) WithValues(keysAndValues ...any) Logger {
 	newLogger := l.zapLogger.With(handleFields(l.zapLogger, keysAndValues)...)
 
 	return NewLogger(newLogger)
@@ -392,20 +415,20 @@ func (l *zapLogger) Debug(msg string, fields ...Field) {
 }
 
 // Debugf method output debug level log.
-func Debugf(format string, v ...interface{}) {
+func Debugf(format string, v ...any) {
 	std.zapLogger.Sugar().Debugf(format, v...)
 }
 
-func (l *zapLogger) Debugf(format string, v ...interface{}) {
+func (l *zapLogger) Debugf(format string, v ...any) {
 	l.zapLogger.Sugar().Debugf(format, v...)
 }
 
 // Debugw method output debug level log.
-func Debugw(msg string, keysAndValues ...interface{}) {
+func Debugw(msg string, keysAndValues ...any) {
 	std.zapLogger.Sugar().Debugw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Debugw(msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Debugw(msg string, keysAndValues ...any) {
 	l.zapLogger.Sugar().Debugw(msg, keysAndValues...)
 }
 
@@ -419,20 +442,20 @@ func (l *zapLogger) Info(msg string, fields ...Field) {
 }
 
 // Infof method output info level log.
-func Infof(format string, v ...interface{}) {
+func Infof(format string, v ...any) {
 	std.zapLogger.Sugar().Infof(format, v...)
 }
 
-func (l *zapLogger) Infof(format string, v ...interface{}) {
+func (l *zapLogger) Infof(format string, v ...any) {
 	l.zapLogger.Sugar().Infof(format, v...)
 }
 
 // Infow method output info level log.
-func Infow(msg string, keysAndValues ...interface{}) {
+func Infow(msg string, keysAndValues ...any) {
 	std.zapLogger.Sugar().Infow(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Infow(msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Infow(msg string, keysAndValues ...any) {
 	l.zapLogger.Sugar().Infow(msg, keysAndValues...)
 }
 
@@ -446,20 +469,20 @@ func (l *zapLogger) Warn(msg string, fields ...Field) {
 }
 
 // Warnf method output warning level log.
-func Warnf(format string, v ...interface{}) {
+func Warnf(format string, v ...any) {
 	std.zapLogger.Sugar().Warnf(format, v...)
 }
 
-func (l *zapLogger) Warnf(format string, v ...interface{}) {
+func (l *zapLogger) Warnf(format string, v ...any) {
 	l.zapLogger.Sugar().Warnf(format, v...)
 }
 
 // Warnw method output warning level log.
-func Warnw(msg string, keysAndValues ...interface{}) {
+func Warnw(msg string, keysAndValues ...any) {
 	std.zapLogger.Sugar().Warnw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Warnw(msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Warnw(msg string, keysAndValues ...any) {
 	l.zapLogger.Sugar().Warnw(msg, keysAndValues...)
 }
 
@@ -473,20 +496,20 @@ func (l *zapLogger) Error(msg string, fields ...Field) {
 }
 
 // Errorf method output error level log.
-func Errorf(format string, v ...interface{}) {
+func Errorf(format string, v ...any) {
 	std.zapLogger.Sugar().Errorf(format, v...)
 }
 
-func (l *zapLogger) Errorf(format string, v ...interface{}) {
+func (l *zapLogger) Errorf(format string, v ...any) {
 	l.zapLogger.Sugar().Errorf(format, v...)
 }
 
 // Errorw method output error level log.
-func Errorw(msg string, keysAndValues ...interface{}) {
+func Errorw(msg string, keysAndValues ...any) {
 	std.zapLogger.Sugar().Errorw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Errorw(msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Errorw(msg string, keysAndValues ...any) {
 	l.zapLogger.Sugar().Errorw(msg, keysAndValues...)
 }
 
@@ -500,20 +523,20 @@ func (l *zapLogger) Panic(msg string, fields ...Field) {
 }
 
 // Panicf method output panic level log and shutdown application.
-func Panicf(format string, v ...interface{}) {
+func Panicf(format string, v ...any) {
 	std.zapLogger.Sugar().Panicf(format, v...)
 }
 
-func (l *zapLogger) Panicf(format string, v ...interface{}) {
+func (l *zapLogger) Panicf(format string, v ...any) {
 	l.zapLogger.Sugar().Panicf(format, v...)
 }
 
 // Panicw method output panic level log.
-func Panicw(msg string, keysAndValues ...interface{}) {
+func Panicw(msg string, keysAndValues ...any) {
 	std.zapLogger.Sugar().Panicw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Panicw(msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Panicw(msg string, keysAndValues ...any) {
 	l.zapLogger.Sugar().Panicw(msg, keysAndValues...)
 }
 
@@ -527,20 +550,20 @@ func (l *zapLogger) Fatal(msg string, fields ...Field) {
 }
 
 // Fatalf method output fatal level log.
-func Fatalf(format string, v ...interface{}) {
+func Fatalf(format string, v ...any) {
 	std.zapLogger.Sugar().Fatalf(format, v...)
 }
 
-func (l *zapLogger) Fatalf(format string, v ...interface{}) {
+func (l *zapLogger) Fatalf(format string, v ...any) {
 	l.zapLogger.Sugar().Fatalf(format, v...)
 }
 
 // Fatalw method output Fatalw level log.
-func Fatalw(msg string, keysAndValues ...interface{}) {
+func Fatalw(msg string, keysAndValues ...any) {
 	std.zapLogger.Sugar().Fatalw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Fatalw(msg string, keysAndValues ...interface{}) {
+func (l *zapLogger) Fatalw(msg string, keysAndValues ...any) {
 	l.zapLogger.Sugar().Fatalw(msg, keysAndValues...)
 }
 
@@ -572,14 +595,14 @@ func (l *zapLogger) F(ctx context.Context) *zapLogger {
 	lg := l.clone()
 
 	if fields := ctx.Value(FieldKeyCtx{}); fields != nil {
-		if fieldMap, ok := fields.(map[string]interface{}); ok {
+		if fieldMap, ok := fields.(map[string]any); ok {
 			lg.addLoggerField(fieldMap)
 		}
 	}
 
 	// 兼容gin.Context
 	if fields := ctx.Value(FieldKeyCtx{}.String()); fields != nil {
-		if fieldMap, ok := fields.(map[string]interface{}); ok {
+		if fieldMap, ok := fields.(map[string]any); ok {
 			lg.addLoggerField(fieldMap)
 		}
 	}
@@ -587,13 +610,13 @@ func (l *zapLogger) F(ctx context.Context) *zapLogger {
 	return lg
 }
 
-func (l *zapLogger) Fields(fields map[string]interface{}) *zapLogger {
+func (l *zapLogger) Fields(fields map[string]any) *zapLogger {
 	lg := l.clone()
 	lg.addLoggerField(fields)
 	return lg
 }
 
-func (l *zapLogger) addLoggerField(fieldMap map[string]interface{}) {
+func (l *zapLogger) addLoggerField(fieldMap map[string]any) {
 	// 支持 field key排序
 	keys := make([]string, 0, len(fieldMap))
 	for k := range fieldMap {

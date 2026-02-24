@@ -8,10 +8,10 @@ import (
 	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
-type InterceptFunc func(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error)
+type InterceptFunc func(ctx context.Context, req *HttpRequest, arg, reply any, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error)
 
 type Interceptor interface {
-	Intercept(ctx context.Context, req *HttpRequest, arg, reply interface{}, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error)
+	Intercept(ctx context.Context, req *HttpRequest, arg, reply any, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error)
 	Name() string
 }
 
@@ -21,7 +21,7 @@ type interceptor struct {
 }
 
 func (i interceptor) Intercept(ctx context.Context, req *HttpRequest, arg,
-	reply interface{}, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error) {
+	reply any, cc *Client, invoker Invoker, opts ...CallOption) (*HttpResponse, error) {
 	startTime := time.Now()
 	logInfoIf(ctx, fmt.Sprintf("Interceptor '%v' Invoked called.", i.Name()))
 
@@ -30,7 +30,7 @@ func (i interceptor) Intercept(ctx context.Context, req *HttpRequest, arg,
 	debugCore(ctx, startTime, req, rawResp, arg, reply, err)
 	logInfoIf(ctx, fmt.Sprintf("Interceptor '%v' Invoked end.", i.Name()))
 
-	return rawResp, errors.UpdateStack(err)
+	return rawResp, errors.WithStack(err)
 
 }
 

@@ -1,271 +1,382 @@
-//nolint:errorlint
+// Package errors provides simple error handling primitives.
+//
+// The traditional error handling idiom in Go is roughly akin to
+//
+//	if err != nil {
+//	        return err
+//	}
+//
+// which when applied recursively up the call stack results in error reports
+// without context or debugging information. The errors package allows
+// programmers to add context to the failure path in their code in a way
+// that does not destroy the original value of the error.
+//
+// # Adding context to an error
+//
+// The errors.Wrap function returns a new error that adds context to the
+// original error by recording a stack trace at the point Wrap is called,
+// together with the supplied message. For example
+//
+//	_, err := ioutil.ReadAll(r)
+//	if err != nil {
+//	        return errors.Wrap(err, "read failed")
+//	}
+//
+// If additional control is required, the errors.WithStack and
+// errors.WithMessage functions destructure errors.Wrap into its component
+// operations: annotating an error with a stack trace and with a message,
+// respectively.
+//
+// # Retrieving the cause of an error
+//
+// Using errors.Wrap constructs a stack of errors, adding context to the
+// preceding error. Depending on the nature of the error it may be necessary
+// to reverse the operation of errors.Wrap to retrieve the original error
+// for inspection. Any error value which implements this interface
+//
+//	type causer interface {
+//	        Cause() error
+//	}
+//
+// can be inspected by errors.Cause. errors.Cause will recursively retrieve
+// the topmost error that does not implement causer, which is assumed to be
+// the original cause. For example:
+//
+//	switch err := errors.Cause(err).(type) {
+//	case *MyError:
+//	        // handle specifically
+//	default:
+//	        // unknown error
+//	}
+//
+// Although the causer interface is not exported by this package, it is
+// considered a part of its stable public interface.
+//
+// # Formatted printing of errors
+//
+// All error values returned from this package implement fmt.Formatter and can
+// be formatted by the fmt package. The following verbs are supported:
+//
+//	%s    print the error. If the error has a Cause it will be
+//	      printed recursively.
+//	%v    see %s
+//	%+v   extended format. Each Frame of the error's StackTrace will
+//	      be printed in detail.
+//
+// # Retrieving the stack trace of an error or wrapper
+//
+// New, Errorf, Wrap, and Wrapf record a stack trace at the point they are
+// invoked. This information can be retrieved with the following interface:
+//
+//	type stackTracer interface {
+//	        StackTrace() errors.StackTrace
+//	}
+//
+// The returned errors.StackTrace type is defined as
+//
+//	type StackTrace []Frame
+//
+// The Frame type represents a call site in the stack trace. Frame supports
+// the fmt.Formatter interface that can be used for printing information about
+// the stack trace of this error. For example:
+//
+//	if err, ok := err.(stackTracer); ok {
+//	        for _, f := range err.StackTrace() {
+//	                fmt.Printf("%+s:%d\n", f, f)
+//	        }
+//	}
+//
+// Although the stackTracer interface is not exported by this package, it is
+// considered a part of its stable public interface.
+//
+// See the documentation for Frame.Format for more details.
 package errors
 
 import (
 	"fmt"
-	"strings"
+	"io"
 )
 
-// NewDesc generate a new WithStack error with `code` and `desc`.
-func NewDesc(code int, desc string) *WithStack {
-	codeMux.RLock()
-	defer codeMux.RUnlock()
-
-	errStack := &WithStack{
-		stack:       []string{newStack(code, Caller())},
-		description: desc,
+// New returns an error with the supplied message.
+// New also records the stack trace at the point it was called.
+func New(message string) error {
+	return &fundamental{
+		msg:   message,
+		stack: callers(),
 	}
-
-	coder, exist := codes[code]
-	if !exist {
-		errStack.Coder = unknown
-		return errStack
-	}
-	errStack.Coder = coder
-	return errStack
 }
 
-// NewStack generate a new WithStack error with `code` , `desc`,`stack`.
-func NewStack(code int, desc string, stack []string) *WithStack {
-	codeMux.RLock()
-	defer codeMux.RUnlock()
-
-	stack = append(stack, newStack(code, Caller()))
-	errStack := &WithStack{
-		stack:       stack,
-		description: desc,
+// Errorf formats according to a format specifier and returns the string
+// as a value that satisfies error.
+// Errorf also records the stack trace at the point it was called.
+func Errorf(format string, args ...any) error {
+	return &fundamental{
+		msg:   fmt.Sprintf(format, args...),
+		stack: callers(),
 	}
-
-	coder, exist := codes[code]
-	if !exist {
-		errStack.Coder = unknown
-		return errStack
-	}
-	errStack.Coder = coder
-	return errStack
 }
 
-// NewF generate a new WithStack error with `code` and desc `format+arg...`.
-func NewF(code int, format string, args ...interface{}) *WithStack {
-	codeMux.RLock()
-	defer codeMux.RUnlock()
-
-	errStack := &WithStack{
-		stack:       []string{newStack(code, Caller())},
-		description: fmt.Sprintf(format, args...),
-	}
-
-	coder, exist := codes[code]
-	if !exist {
-		errStack.Coder = unknown
-		return errStack
-	}
-	errStack.Coder = coder
-	return errStack
+// fundamental is an error that has a message and a stack, but no caller.
+// 和withStack的区别在于，无法通过Cause溯源
+type fundamental struct {
+	msg string
+	*stack
 }
 
-// New generate a new WithStack error with `code` and desc `format+arg...`
-// if err not nil, inherit its stack and error message, replace origin code.
-func New(code int, err error) *WithStack {
-	codeMux.RLock()
-	defer codeMux.RUnlock()
+func (f *fundamental) Error() string { return f.msg }
 
-	errStack := &WithStack{
-		stack:       []string{newStack(code, Caller())},
-		description: "",
-	}
-
-	coder, exist := codes[code]
-	if !exist {
-		errStack.Coder = unknown
-		if err != nil {
-			errStack.description = err.Error()
+func (f *fundamental) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			io.WriteString(s, f.msg)
+			f.stack.Format(s, verb)
+			return
 		}
-		return errStack
+		fallthrough
+	case 's':
+		io.WriteString(s, f.msg)
+	case 'q':
+		fmt.Fprintf(s, "%q", f.msg)
 	}
-
-	if err != nil {
-		if st, ok := err.(*WithStack); ok {
-			errStack.stack = append(st.Stack(), errStack.stack...)
-			errStack.description = st.description
-		} else {
-			errStack.description = err.Error()
-		}
-	}
-	errStack.Coder = coder
-	return errStack
 }
 
-// UpdateStack add a new layer to err's caller stack.
-func UpdateStack(err error) error {
-	if err != nil {
-		errStack := FromError(err)
-		if errStack != nil {
-			errStack.stack = append(errStack.stack, newStack(errStack.Code(), Caller()))
-			return errStack
-		}
-	}
-	return nil
-}
-
-var _ error = &WithStack{}
-
-type WithStack struct {
-	Coder
-	// 状态栈
-	stack []string
-	// 描述
-	description string
-}
-
-func (m *WithStack) Stack() []string {
-	if m != nil {
-		return m.stack
-	}
-	return nil
-}
-
-func (m *WithStack) Description() string {
-	if m != nil {
-		return m.description
-	}
-	return ""
-}
-
-func (m *WithStack) Detail() string {
-	siList := m.StackInfo()
-	callChain := ""
-	lastService := ""
-	for i, si := range siList {
-		service := fmt.Sprintf("([%s:%s]", si.Host, si.Module)
-		if i == 0 {
-			callChain = fmt.Sprintf("%s<%s:%s>)", si.FuncName, si.FileName, si.Line)
-		} else if service != lastService && lastService != "" {
-			callChain = si.FuncName + ")->" + lastService + callChain
-		} else {
-			callChain = si.FuncName + "->" + callChain
-		}
-		lastService = service
-	}
-	callChain = lastService + callChain
-	if m.description != "" {
-		return fmt.Sprintf("stack:%s,code:%d,message:%s,desc:%s", callChain, m.Code(), m.Message(), m.description)
-	}
-	return fmt.Sprintf("stack:%s,code:%d,message:%s", callChain, m.Code(), m.Message())
-}
-
-type StackInfo struct {
-	Host     string `json:"host"`
-	PID      string `json:"pid"`
-	Module   string `json:"module"`
-	Code     string `json:"code"`
-	FileName string `json:"file_name"`
-	FuncName string `json:"func_name"`
-	Line     string `json:"line"`
-}
-
-func (m *WithStack) StackInfo() []StackInfo {
-	siList := make([]StackInfo, 0, len(m.stack))
-	for _, str := range m.stack {
-		si := StackInfo{}
-		slist := strings.Split(str, ",")
-		for _, s := range slist {
-			if strings.HasPrefix(s, "host:") {
-				si.Host = strings.TrimPrefix(s, "host:")
-			}
-			if strings.HasPrefix(s, "pid:") {
-				si.PID = strings.TrimPrefix(s, "pid:")
-			}
-			if strings.HasPrefix(s, "module:") {
-				si.Module = strings.TrimPrefix(s, "module:")
-			}
-			if strings.HasPrefix(s, "code:") {
-				si.Code = strings.TrimPrefix(s, "code:")
-			}
-			if strings.HasPrefix(s, "file:") {
-				si.FileName = strings.TrimPrefix(s, "file:")
-			}
-			if strings.HasPrefix(s, "func:") {
-				si.FuncName = strings.TrimPrefix(s, "func:")
-			}
-			if strings.HasPrefix(s, "line:") {
-				si.Line = strings.TrimPrefix(s, "line:")
-			}
-		}
-		siList = append(siList, si)
-	}
-	return siList
-}
-
-func (m WithStack) Error() string {
-	return fmt.Sprintf("%v:%v", m.Message()[MessageLangENKey], m.description)
-}
-
-func (m WithStack) ToBasicJson() map[string]interface{} {
-	out := make(map[string]interface{})
-	out["desc"] = m.description
-	out["message"] = m.Message()
-	out["code"] = m.Code()
-
-	return out
-}
-
-func (m WithStack) ToDetailJson() map[string]interface{} {
-	out := make(map[string]interface{})
-	out["desc"] = m.description
-	out["stack"] = m.StackInfo()
-	out["message"] = m.Message()
-	out["code"] = m.Code()
-	out["http"] = m.HTTPStatus()
-	return out
-}
-
-// FromError parse any error into *WithStack.
-// nil error will return nil directly, caller should handle nil *WithStack.
-// None WithStack error will be parsed as ErrUnknown.
-// NOTE: `*WithStack is nil` doesn't equal to `error is nil`.
-func FromError(err error) *WithStack {
-	return fromError(err)
-}
-
-func fromError(err error) *WithStack {
+// WithStack annotates err with a stack trace at the point WithStack was called.
+// If err is nil, WithStack returns nil.
+// 给错误加上调用栈
+func WithStack(err error) error {
 	if err == nil {
 		return nil
 	}
 
-	if v, ok := err.(*WithStack); ok {
-		return v
-	}
-
-	if v, ok := err.(Coder); ok {
-		if code, exist := codes[v.Code()]; exist {
-			return &WithStack{
-				Coder:       code,
-				stack:       []string{newStack(unknown.code, Caller())},
-				description: err.Error(),
-			}
+	if e, ok := err.(*withCode); ok {
+		return &withCode{
+			err:   e.err,
+			code:  e.code,
+			cause: err,
+			stack: callers(),
 		}
 	}
 
-	// if error has stack, use it
-	if v, ok := err.(StackTrace); ok {
-		stack := v.Stack()
-		stack = append(stack, newStack(unknown.code, Caller()))
-
-		return &WithStack{
-			Coder:       unknown,
-			stack:       v.Stack(),
-			description: err.Error(),
-		}
-	}
-
-	return &WithStack{
-		Coder:       unknown,
-		stack:       []string{newStack(unknown.code, Caller())},
-		description: err.Error(),
+	return &withStack{
+		err,
+		callers(),
 	}
 }
 
-func newStack(code int, caller string) string {
-	return ModuleString() + fmt.Sprintf(",code:%d,", code) + caller
+type withStack struct {
+	error
+	*stack
+}
+
+func (w *withStack) Cause() error { return w.error }
+
+// Unwrap provides compatibility for Go 1.13 error chains.
+func (w *withStack) Unwrap() error {
+	if e, ok := w.error.(interface{ Unwrap() error }); ok {
+		return e.Unwrap()
+	}
+
+	return w.error
+}
+
+func (w *withStack) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			fmt.Fprintf(s, "%+v", w.Cause())
+			w.stack.Format(s, verb)
+			return
+		}
+		fallthrough
+	case 's':
+		io.WriteString(s, w.Error())
+	case 'q':
+		fmt.Fprintf(s, "%q", w.Error())
+	}
+}
+
+// Wrap returns an error annotating err with a stack trace
+// at the point Wrap is called, and the supplied message.
+// If err is nil, Wrap returns nil.
+func Wrap(err error, message string) error {
+	if err == nil {
+		return nil
+	}
+	if e, ok := err.(*withCode); ok {
+		return &withCode{
+			err:   fmt.Errorf(message),
+			code:  e.code,
+			cause: err,
+			stack: callers(),
+		}
+	}
+
+	err = &withMessage{
+		cause: err,
+		msg:   message,
+	}
+	return &withStack{
+		err,
+		callers(),
+	}
+}
+
+// Wrapf returns an error annotating err with a stack trace
+// at the point Wrapf is called, and the format specifier.
+// If err is nil, Wrapf returns nil.
+func Wrapf(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+
+	if e, ok := err.(*withCode); ok {
+		return &withCode{
+			err:   fmt.Errorf(format, args...),
+			code:  e.code,
+			cause: err,
+			stack: callers(),
+		}
+	}
+
+	err = &withMessage{
+		cause: err,
+		msg:   fmt.Sprintf(format, args...),
+	}
+	return &withStack{
+		err,
+		callers(),
+	}
+}
+
+// WithMessage annotates err with a new message.
+// If err is nil, WithMessage returns nil.
+func WithMessage(err error, message string) error {
+	if err == nil {
+		return nil
+	}
+	return &withMessage{
+		cause: err,
+		msg:   message,
+	}
+}
+
+// WithMessagef annotates err with the format specifier.
+// If err is nil, WithMessagef returns nil.
+func WithMessagef(err error, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+	return &withMessage{
+		cause: err,
+		msg:   fmt.Sprintf(format, args...),
+	}
+}
+
+type withMessage struct {
+	cause error
+	msg   string
+}
+
+// func (w *withMessage) Error() string { return w.msg }
+func (w *withMessage) Error() string { return w.msg + ": " + w.cause.Error() }
+
+func (w *withMessage) Cause() error { return w.cause }
+
+// Unwrap provides compatibility for Go 1.13 error chains.
+func (w *withMessage) Unwrap() error { return w.cause }
+
+func (w *withMessage) Format(s fmt.State, verb rune) {
+	switch verb {
+	case 'v':
+		if s.Flag('+') {
+			fmt.Fprintf(s, "%+v\n", w.Cause())
+			io.WriteString(s, w.msg)
+			return
+		}
+		fallthrough
+	case 's', 'q':
+		io.WriteString(s, w.Error())
+	}
+}
+
+type withCode struct {
+	err   error
+	code  int
+	cause error
+	*stack
+}
+
+func WithCode(code int, format string, args ...any) error {
+	return &withCode{
+		err:   fmt.Errorf(format, args...),
+		code:  code,
+		stack: callers(),
+	}
+}
+
+func WrapCode(err error, code int) error {
+	if err == nil {
+		return nil
+	}
+
+	return &withCode{
+		err:   err,
+		code:  code,
+		cause: err,
+		stack: callers(),
+	}
+}
+
+func WrapCodeF(err error, code int, format string, args ...any) error {
+	if err == nil {
+		return nil
+	}
+
+	return &withCode{
+		err:   fmt.Errorf(format, args...),
+		code:  code,
+		cause: err,
+		stack: callers(),
+	}
+}
+
+// Error return the externally-safe error message.
+func (w *withCode) Error() string { return fmt.Sprintf("%v", w) }
+
+// Cause return the cause of the withCode error.
+func (w *withCode) Cause() error { return w.cause }
+
+// Unwrap provides compatibility for Go 1.13 error chains.
+func (w *withCode) Unwrap() error { return w.cause }
+
+// Cause returns the underlying cause of the error, if possible.
+// An error value has a cause if it implements the following
+// interface:
+//
+//	type causer interface {
+//	       Cause() error
+//	}
+//
+// If the error does not implement Cause, the original error will
+// be returned. If the error is nil, nil will be returned without further
+// investigation.
+func Cause(err error) error {
+	type causer interface {
+		Cause() error
+	}
+
+	for err != nil {
+		cause, ok := err.(causer)
+		if !ok {
+			break
+		}
+
+		if cause.Cause() == nil {
+			break
+		}
+
+		err = cause.Cause()
+	}
+	return err
 }

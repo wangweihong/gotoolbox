@@ -1,9 +1,13 @@
 package decode
 
 import (
-	"fmt"
+	"encoding/json"
+	"encoding/xml"
 	"mime"
+	"strings"
 	"sync"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 )
 
 const (
@@ -13,13 +17,31 @@ const (
 )
 
 // UnmarshalFunc implements manifest unmarshalling a given MediaType.
-type UnmarshalFunc func([]byte, interface{}) error
+type UnmarshalFunc func([]byte, any) error
 
 // NewMarshalMapping create a new MarshalMapping.
 func NewMarshalMapping() *MarshalMapping {
 	return &MarshalMapping{
 		mappings: make(map[string]UnmarshalFunc),
 	}
+}
+
+func NewDefaultMarshalMapping() *MarshalMapping {
+	mm := &MarshalMapping{
+		mappings: make(map[string]UnmarshalFunc),
+	}
+	// 核心JSON解析器
+	_ = mm.Register("application/json", json.Unmarshal)
+
+	// Docker镜像格式支持
+	_ = mm.Register("application/vnd.docker.distribution.manifest.v1+json", json.Unmarshal)
+	_ = mm.Register("application/vnd.docker.distribution.manifest.v2+json", json.Unmarshal)
+	_ = mm.Register("application/vnd.docker.distribution.manifest.list.v2+json", json.Unmarshal)
+
+	// 其他格式支持
+	_ = mm.Register("application/xml", xml.Unmarshal)
+	_ = mm.Register("text/xml", xml.Unmarshal)
+	return mm
 }
 
 type MarshalMapping struct {
@@ -46,14 +68,14 @@ func (mm *MarshalMapping) Register(mediaType string, u UnmarshalFunc) error {
 	defer mm.lock.Unlock()
 
 	if _, ok := mm.mappings[mediaType]; ok {
-		return fmt.Errorf("manifest media type registration would overwrite existing: %s", mediaType)
+		return errors.Errorf("manifest media type registration would overwrite existing: %s", mediaType)
 	}
 	mm.mappings[mediaType] = u
 	return nil
 }
 
 // UnmarshalManifest looks up manifest unmarshal functions based on MediaType.
-func (mm *MarshalMapping) UnmarshalManifest(ctHeader string, p []byte, arg interface{}) error {
+func (mm *MarshalMapping) UnmarshalManifest(ctHeader string, p []byte, arg any) error {
 	mm.lock.Lock()
 	defer mm.lock.Unlock()
 
@@ -73,8 +95,38 @@ func (mm *MarshalMapping) UnmarshalManifest(ctHeader string, p []byte, arg inter
 
 	unmarshalFunc, ok := mm.mappings[mediaType]
 	if !ok {
-		return fmt.Errorf("unsupported Content-Type %v", mediaType)
+		return errors.Errorf("unsupported Content-Type %v", mediaType)
 	}
 
 	return unmarshalFunc(p, arg)
+}
+
+func IsJsonBased(contentType string) bool {
+	jsonTypes := []string{
+		"application/json",
+		"application/vnd.docker.distribution.manifest.v1+json",
+		"application/vnd.docker.distribution.manifest.v2+json",
+		"application/vnd.docker.distribution.manifest.list.v2+json",
+	}
+
+	for _, t := range jsonTypes {
+		if strings.Contains(contentType, t) {
+			return true
+		}
+	}
+	return false
+}
+
+func IsXmlBased(contentType string) bool {
+	jsonTypes := []string{
+		"application/xml",
+		"text/xml",
+	}
+
+	for _, t := range jsonTypes {
+		if strings.Contains(contentType, t) {
+			return true
+		}
+	}
+	return false
 }

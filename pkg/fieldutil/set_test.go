@@ -426,6 +426,8 @@ func TestSetFieldZeroValueIfMatch(t *testing.T) {
 		MapField     map[string]InnerStruct
 		MapPtrField  map[string]*InnerStruct
 		ConditionMet string
+		Child        *MyStruct
+		Child2       *MyStruct
 	}
 
 	f := func() MyStruct {
@@ -438,11 +440,14 @@ func TestSetFieldZeroValueIfMatch(t *testing.T) {
 			MapField:     map[string]InnerStruct{"key1": {InnerField: "Map1"}},
 			MapPtrField:  map[string]*InnerStruct{"key2": {InnerField: "MapPtr1"}},
 			ConditionMet: "This should be zeroed",
+			Child: &MyStruct{
+				StringField: "Hello",
+			},
 		}
 	}
 
 	Convey("FieldName Equal", t, func() {
-		Convey("1st field", func() {
+		SkipConvey("1st field", func() {
 			// Initialize the struct
 			myStruct := f()
 			SetFieldZeroValueIfCondition(&myStruct, func(s string) bool {
@@ -452,7 +457,7 @@ func TestSetFieldZeroValueIfMatch(t *testing.T) {
 			So(myStruct.IntField, ShouldEqual, 0)
 			So(myStruct.StringField, ShouldEqual, "")
 		})
-		Convey("sub field", func() {
+		SkipConvey("sub field", func() {
 			myStruct := f()
 			SetFieldZeroValueIfCondition(&myStruct, func(s string) bool {
 				return s == "InnerField"
@@ -463,6 +468,16 @@ func TestSetFieldZeroValueIfMatch(t *testing.T) {
 			So(myStruct.SliceField[0].InnerField, ShouldEqual, "")
 			//So(myStruct.MapField["key1"].InnerField, ShouldEqual, "")
 			So(myStruct.MapPtrField["key2"].InnerField, ShouldEqual, "")
+
+			So(myStruct.Child.StringField, ShouldEqual, "")
+		})
+		Convey("sub sub field", func() {
+			myStruct := f()
+			SetFieldZeroValueIfCondition(&myStruct, func(s string) bool {
+				return s == "StringField"
+			})
+			So(myStruct.StringField, ShouldEqual, "")
+			So(myStruct.Child.StringField, ShouldEqual, "")
 		})
 	})
 

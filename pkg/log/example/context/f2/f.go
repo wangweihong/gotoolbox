@@ -20,7 +20,7 @@ func main() {
 	log.FromContext(ctx).Info("okok", log.String("name", "bbb"))
 
 	// example: how to use fields in gin context
-	fields := make(map[string]interface{})
+	fields := make(map[string]any)
 	fields["name"] = "bob"
 	fields["age"] = 17
 
@@ -29,7 +29,7 @@ func main() {
 	// 2023-07-19 17:24:24.776 INFO    f2/f.go:27      gin context example     {"name": "bob", "age": 17}
 	log.F(gctx).Info("gin context example")
 
-	gctx.Set(log.KeyRequestID, "123456")
+	gctx.Set(string(log.KeyRequestID), "123456")
 	// 2023-07-19 17:27:39.820 INFO    f2/f.go:32      gin context example 2   {"name": "bob", "age": 17, "requestID":
 	// "123456"}
 	log.F(gctx).L(gctx).Info("gin context example 2")

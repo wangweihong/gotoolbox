@@ -2,25 +2,36 @@ package template
 
 import (
 	"bytes"
-	"fmt"
+
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"github.com/wangweihong/gotoolbox/pkg/log"
 )
 
+type ProcessorInterface interface {
+	Name() string
+}
+
+var _ ProcessorInterface = &FileProcessor{}
+var _ ProcessorInterface = &DirectoryProcessor{}
+
 type FileProcessor struct {
-	TemplateName string
-	TemplateText *template.Template
-	Context      map[string]interface{}
-	FilePath     string // filepath to write after template has parsed
-	FileMode     os.FileMode
-	TemplateData string // template data
-	TemplatePath string // template path
-	err          error
+	TemplateName    string
+	TemplateText    *template.Template
+	Context         map[string]any
+	FilePath        string // filepath to write after template has parsed
+	FileMode        os.FileMode
+	TemplateData    string // template data
+	TemplatePath    string // template path
+	TemplateDir     string
+	TemplateSubPath string
+	err             error
 }
 
 func (p *FileProcessor) Error() error {
@@ -29,8 +40,16 @@ func (p *FileProcessor) Error() error {
 
 func (p *FileProcessor) Parse() (string, error) {
 	var data bytes.Buffer
-	if p.TemplateText == nil && p.TemplateData == "" && p.TemplatePath == "" {
-		return "", fmt.Errorf("template %v TemplateText & TemplatePath & TemplateData is Empty", p.Name())
+
+	if p.TemplatePath == "" {
+		if p.TemplateDir == "" || p.TemplateSubPath == "" {
+			return "", errors.Errorf("template %v TemplateDir | p.TemplateSubPath is empty when TemplatePath not set", p.Name())
+		}
+		p.TemplatePath = filepath.Join(p.TemplateDir, p.TemplateSubPath)
+	}
+
+	if p.TemplateText == nil && p.TemplateData == "" {
+		return "", errors.Errorf("template %v TemplateText  & TemplateData is Empty", p.Name())
 	}
 
 	if p.TemplateText == nil {
@@ -46,21 +65,21 @@ func (p *FileProcessor) Parse() (string, error) {
 	}
 
 	if err := p.TemplateText.Execute(&data, p.Context); err != nil {
-		return "", fmt.Errorf("parse template %v fail:%v", p.TemplateText.Name(), err)
+		return "", errors.Errorf("parse template %v fail:%v", p.TemplateText.Name(), err)
 	}
 	return strings.TrimPrefix(data.String(), "\n"), nil
 }
 
-func (p *FileProcessor) SetContexts(context map[string]string) *FileProcessor {
+func (p *FileProcessor) SetContexts(context map[string]any) *FileProcessor {
 	for k, v := range context {
 		p.Context[k] = v
 	}
 	return p
 }
 
-func (p *FileProcessor) SetContext(key string, value interface{}) *FileProcessor {
+func (p *FileProcessor) SetContext(key string, value any) *FileProcessor {
 	if p.Context == nil {
-		p.Context = make(map[string]interface{})
+		p.Context = make(map[string]any)
 	}
 	p.Context[key] = value
 	return p
@@ -71,7 +90,7 @@ func (p *FileProcessor) SetFileMode(fm os.FileMode) *FileProcessor {
 	return p
 }
 
-func (p *FileProcessor) Name() string {
+func (p FileProcessor) Name() string {
 	if p.TemplateText != nil {
 		return p.TemplateText.Name()
 	}
@@ -89,18 +108,18 @@ func (p *FileProcessor) LocateToDiskForTest(appendData ...string) error {
 
 func (p *FileProcessor) LocateToDisk(appendData ...string) *FileProcessor {
 	if p.FilePath == "" {
-		p.err = fmt.Errorf("template %v has not set locate file name", p.Name())
+		p.err = errors.Errorf("template %v has not set locate file name", p.Name())
 		return p
 	}
 
 	//if !path.IsAbs(p.FilePath) {
-	//	p.err = fmt.Errorf("template %v locate file name %v is not absolute path", p.Name(), p.FilePath)
+	//	p.err = errors.Errorf("template %v locate file name %v is not absolute path", p.Name(), p.FilePath)
 	//	return p
 	//}
 
 	data, err := p.Parse()
 	if err != nil {
-		p.err = fmt.Errorf("template %v parse error:%v", p.Name(), err.Error())
+		p.err = errors.Errorf("template %v parse error:%v", p.Name(), err.Error())
 		return p
 	}
 
@@ -111,7 +130,7 @@ func (p *FileProcessor) LocateToDisk(appendData ...string) *FileProcessor {
 	}
 
 	if err := os.MkdirAll(filepath.Dir(p.FilePath), 0o755); err != nil {
-		p.err = fmt.Errorf("template %v mkdir %v error :%v", p.Name(), p.FilePath, err.Error())
+		p.err = errors.Errorf("template %v mkdir %v error :%v", p.Name(), p.FilePath, err.Error())
 		return p
 	}
 
@@ -120,7 +139,7 @@ func (p *FileProcessor) LocateToDisk(appendData ...string) *FileProcessor {
 	}
 
 	if err := ioutil.WriteFile(p.FilePath, []byte(data), p.FileMode); err != nil {
-		p.err = fmt.Errorf("template %v save to file %v error :%v", p.Name(), p.FilePath, err.Error())
+		p.err = errors.Errorf("template %v save to file %v error :%v", p.Name(), p.FilePath, err.Error())
 		return p
 	}
 
@@ -129,9 +148,9 @@ func (p *FileProcessor) LocateToDisk(appendData ...string) *FileProcessor {
 
 type DirectoryProcessor struct {
 	TemplateName    string
-	Context         map[string]interface{} // context used parse all template beyond the template dir
-	TemplateDir     string                 // filepath to write after template has parsed
-	LocateParsedDir string                 // which dir parsed files load
+	Context         map[string]any // context used parse all template beyond the template dir
+	TemplateDir     string         // filepath to write after template has parsed
+	LocateParsedDir string         // which dir parsed files load
 	err             error
 }
 
@@ -140,38 +159,37 @@ func (p *DirectoryProcessor) LocateToDiskForTest() error {
 }
 
 func (p *DirectoryProcessor) LocateToDisk() *DirectoryProcessor {
-	// if p.TemplateDir == "" || !filepath.IsAbs(p.TemplateDir) {
 	if p.TemplateDir == "" {
-		p.err = fmt.Errorf("template %v has invalid TemplateDir %v", p.TemplateName, p.TemplateDir)
+		p.err = errors.Errorf("template %v has invalid TemplateDir %v", p.TemplateName, p.TemplateDir)
 		return p
 	}
 
 	fi, err := os.Stat(p.TemplateDir)
 	if err != nil {
-		p.err = fmt.Errorf("template %v stat TemplateDir %v fail:%v", p.TemplateName, p.TemplateDir, err)
+		p.err = errors.Errorf("template %v stat TemplateDir %v fail:%v", p.TemplateName, p.TemplateDir, err)
 		return p
 	}
 
 	if !fi.IsDir() {
-		p.err = fmt.Errorf("template %v TemplateDir %v is not dir", p.TemplateName, p.TemplateDir)
+		p.err = errors.Errorf("template %v TemplateDir %v is not dir", p.TemplateName, p.TemplateDir)
 		return p
 	}
 
 	// if p.LocateParsedDir == "" || !filepath.IsAbs(p.LocateParsedDir) {
 	if p.LocateParsedDir == "" {
-		p.err = fmt.Errorf("template %v has invalid LocateParsedDir %v", p.TemplateName, p.LocateParsedDir)
+		p.err = errors.Errorf("template %v has invalid LocateParsedDir %v", p.TemplateName, p.LocateParsedDir)
 		return p
 	}
 
 	if err := os.MkdirAll(p.LocateParsedDir, 0o755); err != nil {
-		p.err = fmt.Errorf("template %v mkdir %v error :%v", p.TemplateName, p.LocateParsedDir, err.Error())
+		p.err = errors.Errorf("template %v mkdir %v error :%v", p.TemplateName, p.LocateParsedDir, err.Error())
 		return p
 	}
 
 	// path is absolute path of file/dir
 	// walk subdir too.
 	if err := filepath.Walk(p.TemplateDir, p.parseAndWriteToDisk); err != nil {
-		p.err = fmt.Errorf(
+		p.err = errors.Errorf(
 			"templateProc %v parseAndWriteToDisk %v to disk %v　fail:%v",
 			p.TemplateName,
 			p.TemplateDir,
@@ -181,7 +199,7 @@ func (p *DirectoryProcessor) LocateToDisk() *DirectoryProcessor {
 		return p
 	}
 	if err := filepath.Walk(p.TemplateDir, p.writeYamlToDisk); err != nil {
-		p.err = fmt.Errorf(
+		p.err = errors.Errorf(
 			"templateProc %v parseAndWriteToDisk %v to located disk %v　fail:%v",
 			p.TemplateName,
 			p.TemplateDir,
@@ -194,9 +212,9 @@ func (p *DirectoryProcessor) LocateToDisk() *DirectoryProcessor {
 	return p
 }
 
-func (p *DirectoryProcessor) SetContexts(context map[string]interface{}) *DirectoryProcessor {
+func (p *DirectoryProcessor) SetContexts(context map[string]any) *DirectoryProcessor {
 	if p.Context == nil {
-		p.Context = make(map[string]interface{})
+		p.Context = make(map[string]any)
 	}
 	for k, v := range context {
 		p.Context[k] = v
@@ -215,16 +233,16 @@ func (p *DirectoryProcessor) parseAndWriteToDisk(path string, info os.FileInfo, 
 			yalmPathToDisk := strings.TrimSuffix(path, ".template")
 			templateByteData, err := ioutil.ReadFile(path)
 			if err != nil {
-				return fmt.Errorf("read file %v err:%v", path, err)
+				return errors.Errorf("read file %v err:%v", path, err)
 			}
 
 			var data bytes.Buffer
 			if err := template.Must(template.New(info.Name()).Parse(string(templateByteData))).Execute(&data, p.Context); err != nil {
-				return fmt.Errorf("parse Template file %v err:%v", path, err)
+				return errors.Errorf("parse Template file %v err:%v", path, err)
 			}
 			dataWriteToCache := data.String()
 			if err := ioutil.WriteFile(yalmPathToDisk, []byte(dataWriteToCache), 0o644); err != nil {
-				return fmt.Errorf(
+				return errors.Errorf(
 					"templateProc %v template file %v save to file %v error :%v",
 					p.TemplateName,
 					path,
@@ -268,7 +286,7 @@ func (p *DirectoryProcessor) writeYamlToDisk(path string, info os.FileInfo, err 
 		if subPath != "" {
 			locateDir = filepath.Join(p.LocateParsedDir, subPath)
 			if err := os.MkdirAll(locateDir, 0o755); err != nil {
-				return fmt.Errorf("template %v mkdir %v error :%v", p.TemplateName, locateDir, err.Error())
+				return errors.Errorf("template %v mkdir %v error :%v", p.TemplateName, locateDir, err.Error())
 			}
 		}
 		log.Debugf("locateDir: %v", locateDir)
@@ -276,13 +294,13 @@ func (p *DirectoryProcessor) writeYamlToDisk(path string, info os.FileInfo, err 
 		parsedAbsPath := filepath.Join(locateDir, info.Name())
 		templateByteData, err := ioutil.ReadFile(path)
 		if err != nil {
-			return fmt.Errorf("read file %v err:%v", path, err)
+			return errors.Errorf("read file %v err:%v", path, err)
 		}
 
 		dataWriteToCache := string(templateByteData)
 
 		if err := ioutil.WriteFile(parsedAbsPath, []byte(dataWriteToCache), 0o644); err != nil {
-			return fmt.Errorf(
+			return errors.Errorf(
 				"templateProc %v template file %v save to file %v error :%v",
 				p.TemplateName,
 				path,
@@ -295,9 +313,9 @@ func (p *DirectoryProcessor) writeYamlToDisk(path string, info os.FileInfo, err 
 	return nil
 }
 
-func (p *DirectoryProcessor) SetContext(key string, value interface{}) *DirectoryProcessor {
+func (p *DirectoryProcessor) SetContext(key string, value any) *DirectoryProcessor {
 	if p.Context == nil {
-		p.Context = make(map[string]interface{})
+		p.Context = make(map[string]any)
 	}
 	p.Context[key] = value
 	return p
@@ -305,4 +323,8 @@ func (p *DirectoryProcessor) SetContext(key string, value interface{}) *Director
 
 func (p *DirectoryProcessor) Error() error {
 	return p.err
+}
+
+func (p DirectoryProcessor) Name() string {
+	return p.TemplateName
 }

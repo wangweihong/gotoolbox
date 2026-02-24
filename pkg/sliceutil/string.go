@@ -233,3 +233,52 @@ func (m StringSlice) Max() string {
 
 	return max
 }
+
+func (m StringSlice) UpdateValueWithPrefix(prefix string) {
+	if m == nil {
+		return
+	}
+	for k, v := range m {
+		m[k] = prefix + v
+	}
+}
+
+func (m StringSlice) UpdateValueWithSuffix(suffix string) {
+	if m == nil {
+		return
+	}
+	for k, v := range m {
+		m[k] = v + suffix
+	}
+}
+
+func (m StringSlice) UpdateValueWithPrefixRemove(prefix string) {
+	if m == nil {
+		return
+	}
+	for k, v := range m {
+		m[k] = strings.TrimPrefix(v, prefix)
+	}
+}
+
+func (m StringSlice) UpdateValueWithSuffixRemove(suffix string) {
+	if m == nil {
+		return
+	}
+	for k, v := range m {
+		m[k] = strings.TrimSuffix(v, suffix)
+	}
+}
+
+func (m StringSlice) LenExceedCount(leng int) int {
+	if m == nil {
+		return 0
+	}
+	var count int
+	for _, v := range m {
+		if len(v) > leng {
+			count++
+		}
+	}
+	return count
+}

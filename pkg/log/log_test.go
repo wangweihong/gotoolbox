@@ -36,7 +36,7 @@ func Test_WithValues(t *testing.T) {
 func TestZapLogger_WithValuesM(t *testing.T) {
 	defer log.Flush() // used for record logger printer
 
-	f := make(map[string]interface{})
+	f := make(map[string]any)
 	f["key"] = "value"
 	logger := log.WithValuesM(f) // used for record context
 	logger.Info("Hello world!")
@@ -70,7 +70,7 @@ func Test_Option(t *testing.T) {
 func Test_F(t *testing.T) {
 	defer log.Flush()
 
-	fields := make(map[string]interface{}, 0)
+	fields := make(map[string]any, 0)
 	fields["traceID"] = "12345678"
 	fields["name"] = "libai"
 	ctx := log.WithFields(context.Background(), fields)
@@ -78,7 +78,7 @@ func Test_F(t *testing.T) {
 	// Log with fields	{"name": "libai", "traceID": "12345678"}
 	log.F(ctx).Info("Log with fields")
 
-	field2 := make(map[string]interface{}, 0)
+	field2 := make(map[string]any, 0)
 	field2["other"] = "aaa"
 	ctx = log.WithFields(ctx, field2)
 	d := ctx.Value(log.FieldKeyCtx{})
@@ -87,7 +87,7 @@ func Test_F(t *testing.T) {
 		t.Fail()
 	}
 
-	dm := d.(map[string]interface{})
+	dm := d.(map[string]any)
 	if _, ok := dm["name"]; !ok {
 		t.Log("name not exist")
 		t.Fail()

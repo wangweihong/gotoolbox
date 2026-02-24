@@ -101,7 +101,7 @@ var (
 
 // Every constructs a field that carries a pretty string.
 // 5 times performance compared with "Any".
-func Every(key string, val interface{}) Field {
+func Every(key string, val any) Field {
 	byteData, err := json.Marshal(val)
 	if err != nil {
 		return Any(key, val)
@@ -112,7 +112,7 @@ func Every(key string, val interface{}) Field {
 
 // Pretty log data with reflect type. It can log which type data (and object field' type) is.
 // but **50** times performance compared with "Any".
-func Pretty(key string, val interface{}) Field {
+func Pretty(key string, val any) Field {
 	s := fmt.Sprintf("%# v", pretty.Formatter(val))
 	s = strings.Replace(s, "\n", "", -1)
 	s = strings.Replace(s, "\t", "", -1)

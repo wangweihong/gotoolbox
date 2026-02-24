@@ -1,6 +1,7 @@
 package async_test
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ var (
 )
 
 func waitForSomethingHappen(moment time.Time) async.StateRefreshFunc {
-	return func() (interface{}, string, error) {
+	return func() (any, string, error) {
 		if time.Now().Sub(moment).Seconds() < 2 {
 			return "", "ACTIVE", nil
 		}
@@ -59,19 +60,19 @@ func waitForSomethingHappen(moment time.Time) async.StateRefreshFunc {
 }
 
 func waitForSomethingError() async.StateRefreshFunc {
-	return func() (interface{}, string, error) {
-		return "", "", fmt.Errorf("error")
+	return func() (any, string, error) {
+		return "", "", errors.New("error")
 	}
 }
 
 func waitForSomethingNotInPendingState() async.StateRefreshFunc {
-	return func() (interface{}, string, error) {
+	return func() (any, string, error) {
 		return "", "WAIT", nil
 	}
 }
 
 func waitForAlwaysWrongState() async.StateRefreshFunc {
-	return func() (interface{}, string, error) {
+	return func() (any, string, error) {
 		fmt.Println("call")
 		return nil, "", nil
 	}

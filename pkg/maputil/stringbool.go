@@ -2,9 +2,10 @@ package maputil
 
 import "github.com/wangweihong/gotoolbox/pkg/sets"
 
-type StringBoolMap map[string]bool
+// Deprecated: use generic function instead
+type StringBool map[string]bool
 
-func (m StringBoolMap) DeepCopy() StringBoolMap {
+func (m StringBool) DeepCopy() StringBool {
 	o := make(map[string]bool, len(m))
 	for k, v := range m {
 		o[k] = v
@@ -12,21 +13,21 @@ func (m StringBoolMap) DeepCopy() StringBoolMap {
 	return o
 }
 
-func (m StringBoolMap) Init() StringBoolMap {
+func (m StringBool) Init() StringBool {
 	if m == nil {
 		return make(map[string]bool)
 	}
 	return m
 }
 
-func (m StringBoolMap) Delete(key string) {
+func (m StringBool) Delete(key string) {
 	if m == nil {
 		return
 	}
 	delete(m, key)
 }
 
-func (m StringBoolMap) DeleteIfKey(condition func(string) bool) {
+func (m StringBool) DeleteIfKey(condition func(string) bool) {
 	if m == nil {
 		return
 	}
@@ -38,7 +39,7 @@ func (m StringBoolMap) DeleteIfKey(condition func(string) bool) {
 	}
 }
 
-func (m StringBoolMap) DeleteIfValue(condition func(bool) bool) {
+func (m StringBool) DeleteIfValue(condition func(bool) bool) {
 	if m == nil {
 		return
 	}
@@ -50,7 +51,7 @@ func (m StringBoolMap) DeleteIfValue(condition func(bool) bool) {
 	}
 }
 
-func (m StringBoolMap) Has(key string) bool {
+func (m StringBool) Has(key string) bool {
 	if m != nil {
 		if _, exist := m[key]; exist {
 			return true
@@ -59,7 +60,7 @@ func (m StringBoolMap) Has(key string) bool {
 	return false
 }
 
-func (m StringBoolMap) HasAny(key string) bool {
+func (m StringBool) HasAny(key string) bool {
 	if m != nil {
 		if _, exist := m[key]; exist {
 			return true
@@ -68,7 +69,7 @@ func (m StringBoolMap) HasAny(key string) bool {
 	return false
 }
 
-func (m StringBoolMap) Set(key string, value bool) StringBoolMap {
+func (m StringBool) Set(key string, value bool) StringBool {
 	if m == nil {
 		o := make(map[string]bool)
 		o[key] = value
@@ -78,7 +79,7 @@ func (m StringBoolMap) Set(key string, value bool) StringBoolMap {
 	return m
 }
 
-func (m StringBoolMap) Get(key string) bool {
+func (m StringBool) Get(key string) bool {
 	if m == nil {
 		return false
 	}
@@ -86,7 +87,7 @@ func (m StringBoolMap) Get(key string) bool {
 	return v
 }
 
-func (m StringBoolMap) Keys() []string {
+func (m StringBool) Keys() []string {
 	if m == nil {
 		return []string{}
 	}
@@ -97,7 +98,7 @@ func (m StringBoolMap) Keys() []string {
 	return keys
 }
 
-func (m StringBoolMap) ToSetString() sets.String {
+func (m StringBool) ToSetString() sets.String {
 	ss := sets.NewString()
 
 	if m == nil {

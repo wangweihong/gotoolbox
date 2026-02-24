@@ -12,7 +12,7 @@ import (
 )
 
 func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli.Interceptor {
-	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply interface{}, cc *httpcli.Client,
+	return httpcli.NewInterceptor(name, func(ctx context.Context, req *httpcli.HttpRequest, arg, reply any, cc *httpcli.Client,
 		invoker httpcli.Invoker, opts ...httpcli.CallOption) (*httpcli.HttpResponse, error) {
 		if skipper.Skip(req.GetPath(), skipperFunc...) {
 			log.F(ctx).Debugf("skip interceptor %s for rawrurl %s", name, req.GetPath())
@@ -20,7 +20,7 @@ func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli
 			return invoker(ctx, req, arg, reply, cc, opts...)
 		}
 		start := time.Now()
-		fields := make(map[string]interface{})
+		fields := make(map[string]any)
 		fields["req_time_begin"] = start.Format("2006-01-02 15:04:05.000000")
 		fields["req_raw_url"] = req.GetPath()
 		fields["method"] = req.GetMethod()
@@ -44,6 +44,7 @@ func LoggingInterceptor(name string, skipperFunc ...skipper.SkipperFunc) httpcli
 			statusCode = rawResp.GetStatusCode()
 			fields["resp_status"] = rawResp.GetStatusCode()
 			fields["resp_length"] = len(rawResp.GetBody())
+			fields["resp_header"] = rawResp.GetHeaders()
 			fields["req_url"] = reqURL
 			fields["req_media_type"] = rawResp.GetHeader("Content-Type")
 			fields["req_addr"] = reqAddr

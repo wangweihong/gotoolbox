@@ -1,10 +1,17 @@
 package maputil
 
-import "github.com/wangweihong/gotoolbox/pkg/sets"
+import (
+	"maps"
 
-type StringIntMap map[string]int
+	"github.com/wangweihong/gotoolbox/pkg/sets"
+)
 
-func (m StringIntMap) DeepCopy() StringIntMap {
+// Deprecated: use generic function instead
+type StringInt map[string]int
+
+//TODO : lock
+
+func (m StringInt) DeepCopy() StringInt {
 	o := make(map[string]int, len(m))
 	for k, v := range m {
 		o[k] = v
@@ -12,21 +19,33 @@ func (m StringIntMap) DeepCopy() StringIntMap {
 	return o
 }
 
-func (m StringIntMap) Init() StringIntMap {
+func (m StringInt) Init() StringInt {
 	if m == nil {
 		return make(map[string]int)
 	}
 	return m
 }
 
-func (m StringIntMap) Delete(key string) {
+func (m StringInt) AddKeys(keys ...string) StringInt {
+	if m == nil {
+		m = make(map[string]int)
+	}
+	for _, key := range keys {
+		if _, exist := m[key]; !exist {
+			m[key] = 0
+		}
+	}
+	return m
+}
+
+func (m StringInt) Delete(key string) {
 	if m == nil {
 		return
 	}
 	delete(m, key)
 }
 
-func (m StringIntMap) DeleteIfKey(condition func(string) bool) {
+func (m StringInt) DeleteIfKey(condition func(string) bool) {
 	if m == nil {
 		return
 	}
@@ -38,7 +57,7 @@ func (m StringIntMap) DeleteIfKey(condition func(string) bool) {
 	}
 }
 
-func (m StringIntMap) DeleteIfValue(condition func(int) bool) {
+func (m StringInt) DeleteIfValue(condition func(int) bool) {
 	if m == nil {
 		return
 	}
@@ -50,7 +69,7 @@ func (m StringIntMap) DeleteIfValue(condition func(int) bool) {
 	}
 }
 
-func (m StringIntMap) Has(key string) bool {
+func (m StringInt) Has(key string) bool {
 	if m != nil {
 		if _, exist := m[key]; exist {
 			return true
@@ -59,7 +78,7 @@ func (m StringIntMap) Has(key string) bool {
 	return false
 }
 
-func (m StringIntMap) Set(key string, value int) StringIntMap {
+func (m StringInt) Set(key string, value int) StringInt {
 	if m == nil {
 		o := make(map[string]int)
 		o[key] = value
@@ -69,7 +88,7 @@ func (m StringIntMap) Set(key string, value int) StringIntMap {
 	return m
 }
 
-func (m StringIntMap) Get(key string) int {
+func (m StringInt) Get(key string) int {
 	if m == nil {
 		return 0
 	}
@@ -77,7 +96,7 @@ func (m StringIntMap) Get(key string) int {
 	return v
 }
 
-func (m StringIntMap) Keys() []string {
+func (m StringInt) Keys() []string {
 	if m == nil {
 		return []string{}
 	}
@@ -88,7 +107,7 @@ func (m StringIntMap) Keys() []string {
 	return keys
 }
 
-func (m StringIntMap) ToSetString() sets.String {
+func (m StringInt) ToSetString() sets.String {
 	ss := sets.NewString()
 	if m == nil {
 		return ss
@@ -99,20 +118,58 @@ func (m StringIntMap) ToSetString() sets.String {
 	return ss
 }
 
-func (m StringIntMap) Equal(m2 map[string]int) bool {
-	if len(m) != len(m2) {
-		return false
+func (m StringInt) Equal(m2 map[string]int) bool {
+	return maps.Equal(m,m2)
+// if len(m) != len(m2) {
+	// 	return false
+	// }
+
+	// for k1, v1 := range m {
+	// 	v2, ok := m2[k1]
+	// 	if !ok {
+	// 		return false
+	// 	}
+
+	// 	if v1 != v2 {
+	// 		return false
+	// 	}
+	// }
+	// return true
+}
+
+// SetAndIncrementKey 如果键存在则增1，否则设置为1
+func (m StringInt) SetAndIncrementKey(key string) StringInt {
+	if m == nil {
+		m = make(map[string]int)
+	}
+	d, exist := m[key]
+	if !exist {
+		m[key] = 1
+		return m
+	}
+	m[key] = d + 1
+	return m
+}
+
+// SetAndIncrementKey 合并两个map的键.
+func (m StringInt) MergeMaps(a map[string]int) StringInt {
+	if m == nil {
+		m = make(map[string]int)
+	}
+	if a == nil {
+		return m
 	}
 
-	for k1, v1 := range m {
-		v2, ok := m2[k1]
-		if !ok {
-			return false
-		}
-
-		if v1 != v2 {
-			return false
+	for key, _ := range a {
+		if _, exists := m[key]; !exists {
+			m[key] = 0
 		}
 	}
-	return true
+
+	for key, _ := range m {
+		if _, exists := a[key]; !exists {
+			a[key] = 0
+		}
+	}
+	return m
 }

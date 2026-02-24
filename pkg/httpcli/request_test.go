@@ -295,7 +295,7 @@ func TestUploadChunkFileFromFormData(t *testing.T) {
 			return
 		}
 
-		index, _ := mathutil.ParseInt64(partNumber)
+		index := mathutil.MustParseNum[int64](int64(0), partNumber)
 		if err := fr.Receive(dst.Bytes(), index); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprintf(w, err.Error())

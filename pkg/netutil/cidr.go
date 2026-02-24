@@ -7,13 +7,15 @@ import (
 	"math/big"
 	"net"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"github.com/wangweihong/gotoolbox/pkg/mathutil"
 )
 
 func ValidateCIDR(cidr string) (*net.IPNet, error) {
 	_, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid CIDR: %v", err)
+		return nil, errors.Errorf("invalid CIDR: %v", err)
 	}
 	return ipnet, nil
 }
@@ -66,7 +68,7 @@ func BigForIP(ip net.IP) *big.Int {
 func GetIndexedIP(subnet *net.IPNet, index int) (net.IP, error) {
 	ip := AddIPOffset(BigForIP(subnet.IP), index)
 	if !subnet.Contains(ip) {
-		return nil, fmt.Errorf("can't generate IP with index %d from subnet. subnet too small. subnet: %q", index, subnet)
+		return nil, errors.Errorf("can't generate IP with index %d from subnet. subnet too small. subnet: %q", index, subnet)
 	}
 	return ip, nil
 }
@@ -114,5 +116,5 @@ func RangeSize(subnet *net.IPNet) int64 {
 // 返回最小子网IP数
 func RangeSizeMin(subnet *net.IPNet, num int64) int64 {
 	size := RangeSize(subnet)
-	return mathutil.Int64Min(size, num)
+	return mathutil.IntMin(size, num)
 }

@@ -1,6 +1,8 @@
 package randutil
 
 import (
+	crand "crypto/rand"
+	"io"
 	"math"
 	"math/rand"
 	"time"
@@ -30,6 +32,27 @@ func RandString(runes []rune, size int) string {
 	return string(b)
 }
 
+func RandStringSlice(runes []rune, size int, n int) []string {
+	if n <= 0 {
+		n = 1
+	}
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+
+	if runes != nil {
+		letterRunes = runes
+	}
+
+	rets := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		b := make([]rune, size)
+		for i := range b {
+			b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		}
+		rets = append(rets, string(b))
+	}
+	return rets
+}
+
 func RandNumSets(n int) string {
 	if n == 0 {
 		n = 6
@@ -53,4 +76,13 @@ func RandNumRange(min int, absDelta int) int {
 	}
 	max := min + int(math.Abs(float64(absDelta)))
 	return rand.Intn(max-min+1) + min
+}
+
+func RandBytes(n int) []byte {
+	rv := make([]byte, n)
+
+	if _, err := io.ReadFull(crand.Reader, rv); err != nil {
+		panic(err)
+	}
+	return rv
 }

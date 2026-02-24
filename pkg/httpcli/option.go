@@ -46,6 +46,7 @@ func WithMTLS(serverCAData string, clientCertData string, clientKeyData string) 
 // 注意顺序:序号0的拦截器第一个执行调用前的处理, 最后一个执行调用后的处理.
 func WithIntercepts(inters ...Interceptor) Option {
 	return func(c *Client) {
+		// 未避免过多混乱, 不采用追加的方式
 		c.chainInterceptors = inters
 	}
 }
@@ -54,6 +55,12 @@ func WithIntercepts(inters ...Interceptor) Option {
 func WithTransport(tp *http.Transport) Option {
 	return func(c *Client) {
 		c.config.HttpTransport = tp
+	}
+}
+
+func WithOTEL() Option {
+	return func(c *Client) {
+		c.config.EnableOTEL = true
 	}
 }
 
@@ -71,5 +78,17 @@ func WithURLProxy(proxyUrl string) Option {
 		if err == nil {
 			c.config.HttpProxy = http.ProxyURL(proxy)
 		}
+	}
+}
+
+func WithNoRedirect() Option {
+	return func(c *Client) {
+		c.config.NoRedirect = true
+	}
+}
+
+func WithRecordCookies() Option {
+	return func(c *Client) {
+		c.config.RecordCookies = true
 	}
 }

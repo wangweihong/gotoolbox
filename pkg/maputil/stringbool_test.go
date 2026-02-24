@@ -10,75 +10,75 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
-func TestStringBoolMap_Init(t *testing.T) {
-	Convey("TestStringBoolMap_Init", t, func() {
+func TestStringBool_Init(t *testing.T) {
+	Convey("TestStringBool_Init", t, func() {
 		var nilMap map[string]bool
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			maputil.StringBoolMap(nilMap).Init()
+			maputil.StringBool(nilMap).Init()
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringBoolMap(nilMap).Init()
+			nilMap = maputil.StringBool(nilMap).Init()
 			So(nilMap, ShouldNotBeNil)
 		})
 	})
 }
 
-func TestStringBoolMap_Set(t *testing.T) {
-	Convey("TestStringBoolMap_Set", t, func() {
+func TestStringBool_Set(t *testing.T) {
+	Convey("TestStringBool_Set", t, func() {
 		var nilMap map[string]bool
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			maputil.StringBoolMap(nilMap).Set("1", true)
+			maputil.StringBool(nilMap).Set("1", true)
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringBoolMap(nilMap).Set("a", true).Set("c", true)
+			nilMap = maputil.StringBool(nilMap).Set("a", true).Set("c", true)
 			So(nilMap, ShouldNotBeNil)
 			So(len(nilMap), ShouldEqual, 2)
 		})
 	})
 }
 
-func TestStringBoolMap_DeepCopy(t *testing.T) {
-	Convey("TestStringBoolMap_Set", t, func() {
+func TestStringBool_DeepCopy(t *testing.T) {
+	Convey("TestStringBool_Set", t, func() {
 		var nilMap map[string]bool
 
 		Convey("not nil", func() {
 			So(nilMap, ShouldBeNil)
 
-			nilMap = maputil.StringBoolMap(nilMap).DeepCopy()
+			nilMap = maputil.StringBool(nilMap).DeepCopy()
 			So(nilMap, ShouldNotBeNil)
 
-			nilMap = maputil.StringBoolMap(nilMap).Set("a", true)
+			nilMap = maputil.StringBool(nilMap).Set("a", true)
 			So(nilMap, ShouldNotBeNil)
 			So(len(nilMap), ShouldEqual, 1)
-			So(maputil.StringBoolMap(nilMap).Has("a"), ShouldBeTrue)
+			So(maputil.StringBool(nilMap).Has("a"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringBoolMap_Delete(t *testing.T) {
-	Convey("TestStringBoolMap_Delete", t, func() {
+func TestStringBool_Delete(t *testing.T) {
+	Convey("TestStringBool_Delete", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]bool
-			maputil.StringBoolMap(nilMap).Delete("a")
+			maputil.StringBool(nilMap).Delete("a")
 		})
 		Convey("not nil", func() {
 			d := make(map[string]bool)
 			d["a"] = true
 
-			maputil.StringBoolMap(d).Delete("a")
-			So(maputil.StringBoolMap(d).Has("a"), ShouldBeFalse)
+			maputil.StringBool(d).Delete("a")
+			So(maputil.StringBool(d).Has("a"), ShouldBeFalse)
 		})
 	})
 }
 
-func TestStringBoolMap_DeleteIfKey(t *testing.T) {
-	Convey("TestStringBoolMap_DeleteIfKey", t, func() {
+func TestStringBool_DeleteIfKey(t *testing.T) {
+	Convey("TestStringBool_DeleteIfKey", t, func() {
 		condition := func(k string) bool {
 			if strings.Contains(k, "b") {
 				return true
@@ -87,65 +87,65 @@ func TestStringBoolMap_DeleteIfKey(t *testing.T) {
 		}
 		Convey("nil", func() {
 			var nilMap map[string]bool
-			maputil.StringBoolMap(nilMap).DeleteIfKey(condition)
+			maputil.StringBool(nilMap).DeleteIfKey(condition)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]bool)
 			d["ab"] = true
 			d["bb"] = true
 			d["cc"] = true
-			maputil.StringBoolMap(d).DeleteIfKey(condition)
+			maputil.StringBool(d).DeleteIfKey(condition)
 
-			So(maputil.StringBoolMap(d).Has("ab"), ShouldBeFalse)
-			So(maputil.StringBoolMap(d).Has("bb"), ShouldBeFalse)
-			So(maputil.StringBoolMap(d).Has("cc"), ShouldBeTrue)
+			So(maputil.StringBool(d).Has("ab"), ShouldBeFalse)
+			So(maputil.StringBool(d).Has("bb"), ShouldBeFalse)
+			So(maputil.StringBool(d).Has("cc"), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringBoolMap_DeleteIfValue(t *testing.T) {
-	Convey("TestStringBoolMap_DeleteIfValue", t, func() {
+func TestStringBool_DeleteIfValue(t *testing.T) {
+	Convey("TestStringBool_DeleteIfValue", t, func() {
 		condition := func(k bool) bool {
 			return k
 		}
 		Convey("nil", func() {
 			var nilMap map[string]bool
-			maputil.StringBoolMap(nilMap).DeleteIfValue(condition)
+			maputil.StringBool(nilMap).DeleteIfValue(condition)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]bool)
 			d["ab"] = true
 			d["bb"] = false
 			d["cc"] = true
-			maputil.StringBoolMap(d).DeleteIfValue(condition)
-			So(maputil.StringBoolMap(d).Has("ab"), ShouldBeFalse)
-			So(maputil.StringBoolMap(d).Has("bb"), ShouldBeTrue)
-			So(maputil.StringBoolMap(d).Has("cc"), ShouldBeFalse)
+			maputil.StringBool(d).DeleteIfValue(condition)
+			So(maputil.StringBool(d).Has("ab"), ShouldBeFalse)
+			So(maputil.StringBool(d).Has("bb"), ShouldBeTrue)
+			So(maputil.StringBool(d).Has("cc"), ShouldBeFalse)
 		})
 	})
 }
 
-func TestStringBoolMap_Get(t *testing.T) {
-	Convey("TestStringBoolMap_Get", t, func() {
+func TestStringBool_Get(t *testing.T) {
+	Convey("TestStringBool_Get", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]bool
-			So(maputil.StringBoolMap(nilMap).Get("notexist"), ShouldBeFalse)
+			So(maputil.StringBool(nilMap).Get("notexist"), ShouldBeFalse)
 		})
 		Convey("not nil", func() {
 			d := make(map[string]bool)
 			d["a"] = true
 
-			So(maputil.StringBoolMap(d).Get("a"), ShouldBeTrue)
-			So(maputil.StringBoolMap(d).Get("noexist"), ShouldBeFalse)
+			So(maputil.StringBool(d).Get("a"), ShouldBeTrue)
+			So(maputil.StringBool(d).Get("noexist"), ShouldBeFalse)
 		})
 	})
 }
 
-func TestStringBoolMap_Keys(t *testing.T) {
-	Convey("TestStringBoolMap_Keys", t, func() {
+func TestStringBool_Keys(t *testing.T) {
+	Convey("TestStringBool_Keys", t, func() {
 		Convey("nil", func() {
 			var nilMap map[string]bool
-			keys := maputil.StringBoolMap(nilMap).Keys()
+			keys := maputil.StringBool(nilMap).Keys()
 
 			So(len(keys), ShouldEqual, 0)
 		})
@@ -154,22 +154,22 @@ func TestStringBoolMap_Keys(t *testing.T) {
 			d["a"] = true
 			d["b"] = true
 
-			keys := maputil.StringBoolMap(d).Keys()
+			keys := maputil.StringBool(d).Keys()
 			So(len(keys), ShouldEqual, 2)
 			So(sets.NewString(keys...).Equal(sets.NewString("a", "b")), ShouldBeTrue)
 		})
 	})
 }
 
-func TestStringBoolMap_ToSetString(t *testing.T) {
-	Convey("TestStringBoolMap_ToSetString", t, func() {
-		So(maputil.StringBoolMap(nil).ToSetString(), ShouldNotBeNil)
+func TestStringBool_ToSetString(t *testing.T) {
+	Convey("TestStringBool_ToSetString", t, func() {
+		So(maputil.StringBool(nil).ToSetString(), ShouldNotBeNil)
 
 		d := make(map[string]bool)
 		d["a"] = true
 		d["b"] = true
 
-		ss := maputil.StringBoolMap(d).ToSetString()
+		ss := maputil.StringBool(d).ToSetString()
 		So(ss.Len(), ShouldEqual, 2)
 	})
 }

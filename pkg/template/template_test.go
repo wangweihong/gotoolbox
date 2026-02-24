@@ -1,6 +1,7 @@
 package template_test
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -8,8 +9,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/wangweihong/gotoolbox/pkg/errors"
+
 	"github.com/wangweihong/gotoolbox/pkg/maputil"
 	"github.com/wangweihong/gotoolbox/pkg/template"
+
+	gtemplate "text/template"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -49,7 +54,7 @@ func TestFileProcessor_Parse(t *testing.T) {
 			FilePath: "./testdata/haproxy.yaml",
 		}
 		data.TemplatePath = ""
-		data.Context = maputil.NewStringInterfaceMap().
+		data.Context = maputil.NewStringAny().
 			Set("HaproxyPort", 8443).
 			Set("ServerIPs", []string{"192.168.0.1", "192.168.0.2", "192.168.0.3"}).
 			Set("ServerPort", "6443").
@@ -71,7 +76,7 @@ func TestDirectoryProcessor_Parse(t *testing.T) {
 			TemplateDir:     "./testdata/template/calico",
 			LocateParsedDir: "./testdata/generated/calico",
 		}
-		data.Context = maputil.NewStringInterfaceMap().
+		data.Context = maputil.NewStringAny().
 			Set("ImageRepository", "example.io")
 
 		err := data.LocateToDisk().Error()
@@ -89,7 +94,7 @@ func TestDirectoryProcessor_Parse(t *testing.T) {
 func generateDataPathPrint(rootPath, prefix string) error {
 	files, err := ioutil.ReadDir(rootPath)
 	if err != nil {
-		return fmt.Errorf("error reading directory %s: %v", rootPath, err)
+		return errors.Errorf("error reading directory %s: %v", rootPath, err)
 	}
 	f, err := os.OpenFile("./fileName", os.O_RDWR, 0644)
 	if err != nil {
@@ -109,7 +114,7 @@ func generateDataPathPrint(rootPath, prefix string) error {
 			if !strings.HasSuffix(file.Name(), ".go") {
 				fileContent, err := ioutil.ReadFile(filePath)
 				if err != nil {
-					return fmt.Errorf("error reading file %s: %v", filePath, err)
+					return errors.Errorf("error reading file %s: %v", filePath, err)
 				}
 
 				filepath.Join()
@@ -131,18 +136,18 @@ func generateDataType(packageName, outputDir string) error {
 	fn := "type_generated.go"
 	fp, err := os.Create(filepath.Join(outputDir, fn))
 	if err != nil {
-		return fmt.Errorf("error creating %v: %v", filepath.Join(outputDir, fn), err)
+		return errors.Errorf("error creating %v: %v", filepath.Join(outputDir, fn), err)
 	}
 	defer fp.Close()
 
 	_, err = fp.WriteString(fmt.Sprintf("package %s\n\n", packageName))
 	if err != nil {
-		return fmt.Errorf("error writing to output file: %v", err)
+		return errors.Errorf("error writing to output file: %v", err)
 	}
 
 	_, err = fp.WriteString("type GeneratedDataPath struct {\n\tData string\n\tPath string\n}\n\n")
 	if err != nil {
-		return fmt.Errorf("error writing to output file: %v", err)
+		return errors.Errorf("error writing to output file: %v", err)
 	}
 	return nil
 }
@@ -153,4 +158,64 @@ func TestGenerateDataPath(t *testing.T) {
 		So(err, ShouldBeNil)
 		fmt.Println(buf.String())
 	})
+}
+
+type Config struct {
+	RegistrySkipVerify bool
+	RegistryCAPath     string
+	RegistryAddress    string
+	RegistryAuth       string
+}
+
+func TestTemplateRendering(t *testing.T) {
+	// 模拟输入数据
+	data := Config{
+		RegistrySkipVerify: true,               // 模拟不跳过验证
+		RegistryCAPath:     "/path/to/ca.crt",  // 模拟CA路径
+		RegistryAddress:    "example.com",      // 模拟Registry地址
+		RegistryAuth:       "dGVzdDpzZWNyZXQ=", // 模拟Base64编码后的Basic Auth（"test:secret"的Base64编码）
+	}
+
+	// 模板字符串
+	const tmplStr = `
+server = "{{.RegistryAddress}}"
+
+[host."{{.RegistryAddress}}"]
+  capabilities = ["pull", "resolve", "push"]
+  skip_verify = {{.RegistrySkipVerify}}
+{{- if not .RegistrySkipVerify }}
+ca = "{{.RegistryCAPath}}"
+[host."{{.RegistryAddress}}".header]
+  authorization = "Basic {{.RegistryAuth}}"
+{{- end }}
+`
+
+	// 创建模板
+	tmpl, err := gtemplate.New("config").Parse(tmplStr)
+	if err != nil {
+		t.Fatalf("failed to parse template: %v", err)
+	}
+
+	// 渲染模板
+	var buf bytes.Buffer
+	err = tmpl.Execute(&buf, data)
+	if err != nil {
+		t.Fatalf("failed to execute template: %v", err)
+	}
+
+	// 输出渲染结果
+	result := buf.String()
+	fmt.Println(result)
+	expected := `server = "example.com"
+
+[host."example.com"]
+  capabilities = ["pull", "resolve", "push"]
+  skip_verify = false
+ca = "/path/to/ca.crt"
+[host."example.com".header]
+  authorization = "Basic dGVzdDpzZWNyZXQ="
+`
+	if result != expected {
+		t.Errorf("Expected result:\n%s\nbut got:\n%s", expected, result)
+	}
 }

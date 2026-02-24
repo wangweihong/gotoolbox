@@ -1,8 +1,11 @@
 package fieldutil
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/sets"
 )
 
 // 字段和标签信息
@@ -33,11 +36,13 @@ func (fts FieldTags) ToTagMap() map[string]FieldTag {
 }
 
 // ParseStructFields 从结构体或者结构体指针(指针非空值)中获取其字段以及标签信息
-func ParseStructFieldTags(s interface{}, tagName string) FieldTags {
+func ParseStructFieldTags(s any, tagName string, HideField ...string) FieldTags {
 	fs := ParseStructFieldValues(s)
 	if fs == nil {
 		return nil
 	}
+
+	hideFieldSets := sets.NewString(HideField...)
 
 	fts := make([]FieldTag, 0, len(fs))
 	for _, v := range fs {
@@ -45,12 +50,19 @@ func ParseStructFieldTags(s interface{}, tagName string) FieldTags {
 		if !v.T.IsExported() {
 			continue
 		}
+
+		if hideFieldSets.Has(v.T.Name) {
+			continue
+		}
+
 		tag := v.T.Tag.Get(tagName)
-		if tagName == JsonTag {
-			tag = strings.TrimSuffix(tag, ",omitempty")
-			if tag == "-" {
-				continue
-			}
+		tag = strings.TrimSuffix(tag, ",omitempty")
+		if tag == "-" {
+			continue
+		}
+
+		if hideFieldSets.Has(tag) {
+			continue
 		}
 
 		fts = append(fts, FieldTag{
@@ -69,4 +81,20 @@ func (fts FieldTags) Tags() []string {
 		}
 	}
 	return tags
+}
+
+func GetFieldTagMapping(p any) map[string]string {
+	fmt.Println(p)
+	fts := ParseStructFieldTags(p, JsonTag)
+
+	fieldTags := make(map[string]string, 0)
+
+	for _, v := range fts {
+		key := v.Tag
+		if key == "" {
+			key = v.Field.Name
+		}
+		fieldTags[key] = v.Field.Name
+	}
+	return fieldTags
 }

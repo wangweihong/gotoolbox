@@ -17,6 +17,7 @@ type MonitorMetric struct {
 	Latency       time.Duration
 }
 
+// FIXME: 这个功能是否和Interceptor重合?
 type HttpHandler struct {
 	RequestHandlers  func(*http.Request) error
 	ResponseHandlers func(*http.Response) error

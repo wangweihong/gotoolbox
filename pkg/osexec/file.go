@@ -6,13 +6,18 @@ package osexec
 import (
 	"archive/tar"
 	"bufio"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/wangweihong/gotoolbox/pkg/errors"
 
 	"github.com/wangweihong/gotoolbox/pkg/executil"
 )
@@ -171,7 +176,7 @@ func GetTarSize(file string) (uint64, error) {
 	}
 	output, err := executil.ExecuteTimeout("tar", opts, 3600)
 	if err != nil {
-		return 0, fmt.Errorf("execute tar tvf %s error %s", file, err)
+		return 0, errors.Errorf("execute tar tvf %s error %s", file, err)
 	}
 	re := regexp.MustCompile("\\s+")
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -183,7 +188,7 @@ func GetTarSize(file string) (uint64, error) {
 		}
 		fileSize, err := strconv.ParseUint(strList[2], 10, 64)
 		if err != nil {
-			return 0, fmt.Errorf("parse %s to uint64 error %s", strList[2], err)
+			return 0, errors.Errorf("parse %s to uint64 error %s", strList[2], err)
 		}
 		size += fileSize
 	}
@@ -251,4 +256,55 @@ func ReplaceLineInFile(filename, targetLine, replacement string) error {
 	}
 
 	return nil
+}
+
+// HashFileInChunks 文件分片进行hash
+func HashFileInChunks(filePath string, chunkSize int64) (string, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open file: %v", err)
+	}
+	defer file.Close()
+
+	hasher := sha256.New()
+	buffer := make([]byte, chunkSize)
+	for {
+		bytesRead, err := file.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", fmt.Errorf("failed to read file: %v", err)
+		}
+
+		hasher.Write(buffer[:bytesRead])
+	}
+
+	hashSum := hasher.Sum(nil)
+
+	return hex.EncodeToString(hashSum), nil
+}
+
+func TraverseDir(rootDir string, process func(string) error) error {
+	return filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			return process(path)
+		}
+		return nil
+	})
+}
+
+func LoadFile(path string, err error) (string, error) {
+	if err != nil {
+		return "", err
+	}
+	d, err := ioutil.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	return string(d), nil
 }
