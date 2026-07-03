@@ -15,3 +15,4 @@
 | `gm` | `NewPrivateKey()` | 生成国密私钥 |
 | `gm` | `NewSelfSignedCert(cfg, key, IsCa)` | 生成国密自签名证书 |
 | `gm` | `NewCertificateCrypto(privateKey)` | 创建国密加密器 |
+[← 返回包列表](../../README.md)

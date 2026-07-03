@@ -14,3 +14,4 @@
 | `TrimAnyPrefixAndReturn(str, prefixes...) ([]string, string)` | 移除前缀并返回被移除的前缀 |
 | `TrimAnySuffix(str, suffixes...) string` | 移除任意后缀 |
 | `UnderscoreToCamel(name) string` | 下划线转驼峰 |
+[← 返回包列表](../../README.md)

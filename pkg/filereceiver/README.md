@@ -7,3 +7,5 @@
 |---|---|
 | `NewFileReceiver(dir, filename, totalSize, partitionSize) (FileReceiver, error)` | 创建文件接收器 |
 | `FileReceiver.Receive(data, index) error` | 接收分片数据并写入指定偏移 |
+
+[← 返回包列表](../../README.md)

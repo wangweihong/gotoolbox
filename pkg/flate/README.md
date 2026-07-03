@@ -5,3 +5,5 @@
 | 函数/方法 | 说明 |
 |---|---|
 | `NewSaferFlateReader(r io.Reader) io.ReadCloser` | 创建安全 Flate 读取器 |
+
+[← 返回包列表](../../README.md)

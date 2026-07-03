@@ -18,3 +18,5 @@
 | `RateLimitingInterface.Forget(item)` | 忘记重试次数 |
 | `RateLimitingInterface.NumRequeues(item) int` | 获取重试次数 |
 | `NewDefaultRateLimiter() *DefaultRateLimiter` | 创建默认速率限制器 |
+
+[← 返回包列表](../../README.md)

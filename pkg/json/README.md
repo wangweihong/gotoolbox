@@ -17,3 +17,4 @@
 | `ShouldDecode(b) map[string]any` | 解码为 map（忽略错误） |
 | `ShouldMap(params) map[string]any` | 结构体转 map（忽略错误） |
 | `RawMarshal(v) ([]byte, error)` | 原始 JSON 编码（不转义） |
+[← 返回包列表](../../README.md)

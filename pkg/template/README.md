@@ -12,3 +12,4 @@
 | `GenerateDataPath(packageName, nameVar, rootPath) (*bytes.Buffer, error)` | 生成嵌入数据路径代码 |
 | `GenerateDataPathToFile(packageName, nameVar, rootPath, outputPath) error` | 生成嵌入数据文件 |
 | `WalkRecordFileDataPath(fp, rootPath, prefix) ([]string, error)` | 遍历记录文件数据路径 |
+[← 返回包列表](../../README.md)

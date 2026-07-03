@@ -10,3 +10,4 @@
 | `ReflectCompare(fi, fj reflect.Value) int` | 反射值比较 |
 | `CompareInterface(a, b any, ascending bool) int` | 接口值比较 |
 | `IsStructReflectValueCanCompare(v1, v2, field) (bool)` | 检查结构体字段是否可比较 |
+[← 返回包列表](../../README.md)

@@ -13,3 +13,4 @@
 | `NewOTT() *OTT` | 创建一次性令牌 |
 | `OTT.Generate() (string, error)` | 生成一次性令牌 |
 | `OTT.Validate(token) error` | 验证一次性令牌 |
+[← 返回包列表](../../README.md)

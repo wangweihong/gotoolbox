@@ -10,3 +10,5 @@
 | `StateMachine.CurrentState() State` | 获取当前状态 |
 | `StateMachine.History() []State` | 获取状态历史 |
 | `StateMachine.Reset(to State)` | 重置状态机 |
+
+[← 返回包列表](../../README.md)

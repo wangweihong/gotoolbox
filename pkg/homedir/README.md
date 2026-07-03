@@ -5,3 +5,4 @@
 | 函数/方法 | 说明 |
 |---|---|
 | `HomeDir() string` | 获取用户主目录（Linux/Windows 兼容） |
+[← 返回包列表](../../README.md)

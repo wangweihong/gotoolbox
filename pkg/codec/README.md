@@ -6,3 +6,4 @@
 |---|---|
 | `SimpleMapCodec.Encode(value) (string, error)` | 将 map 编码为字符串 |
 | `SimpleMapCodec.Decode(signed) (map[string]any, error)` | 将字符串解码为 map |
+[← 返回包列表](../../README.md)

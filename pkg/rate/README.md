@@ -13,3 +13,5 @@
 | `Limiter.WaitN(ctx, n) error` | 阻塞等待 n 个令牌 |
 | `Limiter.Limit() Limit` | 获取速率 |
 | `Limiter.Burst() int` | 获取突发容量 |
+
+[← 返回包列表](../../README.md)

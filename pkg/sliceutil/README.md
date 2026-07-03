@@ -33,3 +33,4 @@
 | `NewFixedSlice[T](capacity) *FixedSlice[T]` | 创建固定大小切片 |
 | `FixedSlice[T].Append(item)` | 追加元素（超过容量则移除最旧） |
 | `FixedSlice[T].GetAll() []T` | 获取所有元素 |
+[← 返回包列表](../../README.md)

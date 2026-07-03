@@ -8,3 +8,4 @@
 | `NewTraceIDContext(ctx, traceID) context.Context` | 创建带 Trace ID 的 context |
 | `FromTraceIDContext(ctx) string` | 从 context 中获取 Trace ID |
 | `WithTraceIDContext(ctx) context.Context` | 自动注入 Trace ID（如果不存在） |
+[← 返回包列表](../../README.md)

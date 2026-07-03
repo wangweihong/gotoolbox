@@ -9,3 +9,4 @@
 | `Extractor.FindDirPathInTar(archivePath, targets...) (string, error)` | 在压缩包中查找目录路径 |
 | `Extractor.FindFileFormatPathInTar(archivePath, formats...) (string, error)` | 按文件格式后缀查找路径 |
 | `Extractor.ExtractTarGZDirectory(archivePath, targetDir, destPath) error` | 解压压缩包中指定目录 |
+[← 返回包列表](../../README.md)

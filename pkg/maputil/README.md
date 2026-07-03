@@ -37,3 +37,5 @@
 | `StringString` | `Get()`, `Set()`, `Keys()`, `Merge()`, `Has()`, `Delete()`, `DeepCopy()` |
 | `StringInt` | `Get()`, `Set()`, `Keys()`, `AddKeys()`, `Has()`, `Delete()`, `DeepCopy()` |
 | `StringBool` | `Get()`, `Set()`, `Keys()`, `Has()`, `Delete()`, `DeepCopy()` |
+
+[← 返回包列表](../../README.md)

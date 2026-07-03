@@ -11,3 +11,4 @@
 | `RandNumSets(n) string` | 随机数字串（默认 6 位） |
 | `RandNumRange(min, absDelta) int` | 范围内随机数 |
 | `RandBytes(n) []byte` | 加密安全随机字节 |
+[← 返回包列表](../../README.md)

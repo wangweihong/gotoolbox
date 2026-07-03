@@ -17,3 +17,4 @@
 | `RateLimitGroup.Wait() map[string]*RateGroupResult` | 等待所有结果 |
 | `RateLimitGroup.WaitError() error` | 等待并返回首个错误 |
 | `Range[T](s, limit, fn) error` | 切片并发遍历 |
+[← 返回包列表](../../README.md)

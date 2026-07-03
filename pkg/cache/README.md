@@ -15,3 +15,5 @@
 | `ThreadSafeStore.Index(indexName, obj)` | 添加索引 |
 | `ThreadSafeStore.ByIndex(indexName, key)` | 通过索引查询 |
 | `ThreadSafeStore.IndexKeys(indexName)` | 获取索引键列表 |
+
+[← 返回包列表](../../README.md)

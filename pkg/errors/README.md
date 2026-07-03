@@ -16,3 +16,4 @@
 | `Status.Code() int` | 获取状态码 |
 | `Status.Message() string` | 获取状态消息 |
 | `Trim(err) error` | 截断错误信息（保留顶层堆栈） |
+[← 返回包列表](../../README.md)

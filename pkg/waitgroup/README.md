@@ -9,3 +9,4 @@
 | `GenericGroup[T].Wait() map[string]GenericResult[T]` | 等待所有任务并返回结果 |
 | `GenericGroup[T].Results() map[string]GenericResult[T]` | 获取结果 |
 | `NewWaitGroup() *WaitGroup` | 创建简单等待组 |
+[← 返回包列表](../../README.md)

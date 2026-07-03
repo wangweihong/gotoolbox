@@ -28,3 +28,4 @@
 | `ParseSizeByteToStr(size) string` | 字节大小转可读字符串 |
 | `ParseSizeBitToStr(size) (string, error)` | 比特大小转可读字符串 |
 | `ParseSizeInMb(size) (int64, error)` | 可读大小解析为 MB |
+[← 返回包列表](../../README.md)
